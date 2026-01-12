@@ -3,22 +3,18 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useAuthRedirect } from "@/hooks/AuthRedirect";
 
 export default function Hero() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+const { data: session, status } = useSession();
+const router = useRouter();
+const { checkAuthAndRedirect, isChecking } = useAuthRedirect();
 
-  const handleCreateDocument = () => {
-    if (status === "loading") return; // Tunggu sampai status login jelas
-    
-    if (session) {
-      // User sudah login, arahkan ke halaman permohonan
-      router.push("/permohonan");
-    } else {
-      // User belum login, arahkan ke halaman login
-      router.push("/login");
-    }
-  };
+const handleCreateDocument = () => {
+  if (status === "loading") return; // Tunggu sampai status login jelas
+
+  checkAuthAndRedirect("/dashboard");
+};
 
   return (
     <section className="w-full bg-gradient-to-br from-[#106EBE] to-[#0A4A8A] text-white py-16 md:py-20">
@@ -56,10 +52,10 @@ export default function Hero() {
             <div className="mt-8">
               <button
                 onClick={handleCreateDocument}
-                disabled={status === "loading"}
+                disabled={isChecking}
                 className="inline-flex items-center bg-[#0FFCBF] text-gray-900 font-bold px-8 py-4 rounded-lg shadow-lg hover:bg-[#0DE5B0] hover:scale-105 transition-all duration-300 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {status === "loading" ? (
+                {isChecking? (
                   "Loading..."
                 ) : (
                   <>

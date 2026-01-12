@@ -9,8 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
 }
 
 model User {
@@ -18,28 +17,38 @@ model User {
   name      String?
   email     String?  @unique
   password  String?
-  role      String   @default("user") // admin / user
+  emailVerified DateTime?
+  role      UserRole   @default(user)
   image     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  phone     String?
+  lastLogin DateTime?
 
   accounts  Account[]
   sessions  Session[]
+  profile   Profile?
   permohonanAhliWaris PermohonanAhliWaris[]
 }
 
+enum UserRole {
+  user
+  admin
+  super_admin
+}
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -84,6 +93,28 @@ model PermohonanAhliWaris {
 
   statusPernikahan String // menikah_1, menikah_2, cerai
   daftarAhliWaris  Json
+  statusPermohonan StatusPermohonan @default(PENDING)
 
   createdAt DateTime @default(now())
+}
+
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  alamat    String?
+  nomorTelepon String?
+  tanggalLahir DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum StatusPermohonan {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
 }

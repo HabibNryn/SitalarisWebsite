@@ -14,8 +14,12 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { JSX } from "react";
 
-const Form = FormProvider;
+// FIX: Gunakan generic type yang eksplisit untuk FormProvider
+const Form = FormProvider as <TFieldValues extends FieldValues>(
+  props: React.ComponentProps<typeof FormProvider<TFieldValues>>
+) => JSX.Element;
 
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
@@ -28,6 +32,7 @@ const FormFieldContext = React.createContext<FormFieldContextValue>(
   {} as FormFieldContextValue
 );
 
+// FIX: Tambahkan type parameter eksplisit
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>

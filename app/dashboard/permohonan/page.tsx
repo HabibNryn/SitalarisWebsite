@@ -1,11 +1,10 @@
-// app/form-permohonan/page.tsx
+// app/dashboard/permohonan/page.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,8 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/Form";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 // Schema untuk ahli waris
 const ahliWarisSchema = z.object({
@@ -30,7 +31,6 @@ const ahliWarisSchema = z.object({
 
 // Schema utama
 const schema = z.object({
-  // Data pewaris
   email: z.string().email("Email tidak valid"),
   nomorTelp: z.string().min(10, "Nomor telepon minimal 10 digit"),
   namaPewaris: z.string().min(1, "Nama pewaris harus diisi"),
@@ -39,8 +39,6 @@ const schema = z.object({
   tempatMeninggalPewaris: z.string().min(1, "Tempat meninggal pewaris harus diisi"),
   tanggalMeninggalPewaris: z.string().min(1, "Tanggal meninggal pewaris harus diisi"),
   nomorAkteKematian: z.string().min(1, "Nomor akte kematian harus diisi"),
-  
-  // Data ahli waris (array)
   ahliWaris: z.array(ahliWarisSchema).min(1, "Minimal ada 1 ahli waris"),
 });
 
@@ -49,6 +47,8 @@ type FormValues = z.infer<typeof schema>;
 
 export default function FormPermohonan() {
   const [ahliWarisCount, setAhliWarisCount] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -101,24 +101,44 @@ export default function FormPermohonan() {
     }
   };
 
-  const onSubmit = (data: FormValues) => {
-    console.log("DATA FORM PERMOHONAN:", data);
-    // Handle form submission here
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Simulasi API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log("DATA FORM PERMOHONAN:", data);
+      alert("Permohonan berhasil dikirim! Kami akan memprosesnya segera.");
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-sm">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Form Permohonan Surat Keterangan Waris
+    <div className="space-y-6">
+      {/* Header dengan back button */}
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => router.back()}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Form Pendaftaran Surat Pernyataan Ahli Waris
           </h1>
           <p className="text-gray-600">
-            Silakan isi data pewaris dan ahli waris dengan lengkap
+            Silakan isi formulir berikut untuk mengajukan permohonan surat pernyataan ahli waris.
           </p>
         </div>
+      </div>
 
+      {/* Form dalam card */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
@@ -126,6 +146,7 @@ export default function FormPermohonan() {
             <div className="space-y-6">
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Data Pewaris</h2>
+                <p className="text-sm text-gray-500 mt-1">Data almarhum/almarhumah</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -135,13 +156,12 @@ export default function FormPermohonan() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Email Pemohon</FormLabel>
                       <FormControl>
                         <Input 
                           type="email" 
                           placeholder="email@example.com" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -155,12 +175,11 @@ export default function FormPermohonan() {
                   name="nomorTelp"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Nomor Telp/WA</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Nomor Telp/WA Pemohon</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="08xxxxxxxxxx" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -174,12 +193,11 @@ export default function FormPermohonan() {
                   name="namaPewaris"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Nama Pewaris</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Nama Lengkap Pewaris </FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Nama lengkap pewaris" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -198,7 +216,6 @@ export default function FormPermohonan() {
                         <Input 
                           placeholder="Kota tempat lahir" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -217,7 +234,6 @@ export default function FormPermohonan() {
                         <Input 
                           type="date" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -236,7 +252,6 @@ export default function FormPermohonan() {
                         <Input 
                           placeholder="Kota tempat meninggal" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -255,7 +270,6 @@ export default function FormPermohonan() {
                         <Input 
                           type="date" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -269,12 +283,11 @@ export default function FormPermohonan() {
                   name="nomorAkteKematian"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Nomor Akte Kematian Pewaris</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">Nomor Akte Kematian</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Nomor akte kematian" 
                           {...field} 
-                          className="bg-white"
                         />
                       </FormControl>
                       <FormMessage />
@@ -289,21 +302,24 @@ export default function FormPermohonan() {
 
             {/* Data Ahli Waris */}
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-900">Data Ahli Waris</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Data Ahli Waris</h2>
+                  <p className="text-sm text-gray-500">Data penerima warisan</p>
+                </div>
                 <Button
                   type="button"
                   onClick={tambahAhliWaris}
                   variant="outline"
                   className="flex items-center gap-2 border-green-600 text-green-600 hover:bg-green-50"
                 >
-                  <span className="text-lg">+</span>
-                  <span>Tambah Ahli Waris</span>
+                  <Plus className="w-4 h-4" />
+                  Tambah Ahli Waris
                 </Button>
               </div>
 
               {form.watch("ahliWaris").map((_, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-6 bg-white">
+                <div key={index} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-md font-medium text-gray-900">Ahli Waris {index + 1}</h3>
                     {ahliWarisCount > 1 && (
@@ -312,8 +328,9 @@ export default function FormPermohonan() {
                         onClick={() => hapusAhliWaris(index)}
                         variant="destructive"
                         size="sm"
-                        className="bg-red-600 hover:bg-red-700"
+                        className="flex items-center gap-1 bg-red-600 hover:bg-red-700"
                       >
+                        <Trash2 className="w-3 h-3" />
                         Hapus
                       </Button>
                     )}
@@ -326,12 +343,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.nama`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Nama</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">Nama Lengkap</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="Nama lengkap ahli waris" 
                               {...field} 
-                              className="bg-white"
                             />
                           </FormControl>
                           <FormMessage />
@@ -350,7 +366,6 @@ export default function FormPermohonan() {
                             <Input 
                               placeholder="16 digit NIK" 
                               {...field} 
-                              className="bg-white"
                             />
                           </FormControl>
                           <FormMessage />
@@ -364,12 +379,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.tempatLahir`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Tempat Lahir Ahli Waris</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">Tempat Lahir</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="Kota tempat lahir" 
                               {...field} 
-                              className="bg-white"
                             />
                           </FormControl>
                           <FormMessage />
@@ -383,12 +397,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.tanggalLahir`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Tanggal Lahir Ahli Waris</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">Tanggal Lahir</FormLabel>
                           <FormControl>
                             <Input 
                               type="date" 
                               {...field} 
-                              className="bg-white"
                             />
                           </FormControl>
                           <FormMessage />
@@ -407,7 +420,6 @@ export default function FormPermohonan() {
                             <Input 
                               placeholder="Pekerjaan ahli waris" 
                               {...field} 
-                              className="bg-white"
                             />
                           </FormControl>
                           <FormMessage />
@@ -426,7 +438,6 @@ export default function FormPermohonan() {
                             <Input 
                               placeholder="Agama ahli waris" 
                               {...field} 
-                              className="bg-white"
                             />
                           </FormControl>
                           <FormMessage />
@@ -440,12 +451,12 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.alamat`}
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-sm font-medium text-gray-700">Alamat</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">Alamat Lengkap</FormLabel>
                           <FormControl>
                             <textarea
                               {...field}
                               rows={3}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
                               placeholder="Alamat lengkap ahli waris"
                             />
                           </FormControl>
@@ -458,13 +469,22 @@ export default function FormPermohonan() {
               ))}
             </div>
 
-            {/* Submit Button */}
-            <div className="pt-6">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-6 border-t border-gray-200">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Batal
+              </Button>
               <Button 
                 type="submit" 
-                className="w-full bg-green-600 hover:bg-green-700 py-3 text-lg font-medium"
+                disabled={isSubmitting}
+                className="bg-green-600 hover:bg-green-700 text-white"
               >
-                Ajukan Permohonan
+                {isSubmitting ? "Mengirim..." : "Ajukan Permohonan"}
               </Button>
             </div>
           </form>
