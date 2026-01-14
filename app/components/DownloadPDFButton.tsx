@@ -1,101 +1,115 @@
 // /components/DownloadPDFButton.tsx
 "use client";
 
-import { useState, lazy, Suspense, ComponentType } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { FormValues } from "@/app/dashboard/SuratPernyataan/types";
-import { usePDFDownload, PDFTemplateComponentType } from "@/hooks/hooks/usePDFDownload";
+import { usePDFDownload } from "@/hooks/hooks/usePDFDownload";
+import { Progress } from "@/components/ui/progress";
+import SuratPernyataanKondisi1 from "@/app/components/surat-templates/SuratPernyataanKondisi1";
 
 interface DownloadPDFButtonProps {
   data: FormValues;
   fileName?: string;
-  templateType?: string; // 'default' | 'kondisi1' | 'kondisi2' | etc.
 }
 
 export default function DownloadPDFButton({ 
   data, 
-  fileName,
-  templateType = 'default'
+  fileName
 }: DownloadPDFButtonProps) {
   const { 
     downloadPDF,
-    downloadPDFWithTemplate,
     isDownloading, 
     error,
+    progress,
     generateFilename 
   } = usePDFDownload();
   
   const [localError, setLocalError] = useState<string | null>(null);
+  const isProcessing = useRef(false);
 
   const handleDownload = async () => {
-    if (!data) {
-      setLocalError("Data belum siap");
+    // Cegah multiple clicks
+    if (isProcessing.current || !data) {
+      if (!data) {
+        setLocalError("Data belum siap");
+      }
       return;
     }
 
     try {
+      isProcessing.current = true;
+      setLocalError(null);
+
       const finalFilename = fileName || generateFilename(data);
-      let success: boolean;
-
-      if (templateType === 'default') {
-        // Gunakan template default - perlu mendefinisikan template default
-        const DefaultTemplate = lazy(() => import('@/app/components/surat-templates/SuratPernyataanKondisi1'));
-        
-        success = await downloadPDFWithTemplate(
-          data,
-          DefaultTemplate as PDFTemplateComponentType,
-          finalFilename
-        );
-      } else {
-        // Gunakan template khusus berdasarkan kondisi
-        const templateMap: Record<string, ComponentType<{ data: FormValues }>> = {
-          'kondisi1': lazy(() => import('@/app/components/surat-templates/SuratPernyataanKondisi1')),
-          // 'kondisi2': lazy(() => import('@/app/components/surat-templates/SuratPernyataanKondisi2')),
-          // ... tambahkan template lainnya
-        };
-
-        const LazyTemplate = templateMap[templateType];
-        
-        if (!LazyTemplate) {
-          throw new Error(`Template untuk ${templateType} tidak ditemukan`);
-        }
-
-        success = await downloadPDFWithTemplate(
-          data,
-          LazyTemplate as PDFTemplateComponentType,
-          finalFilename
-        );
-      }
       
-      if (!success) {
+      // Gunakan template berdasarkan kondisi data
+      const TemplateComponent = SuratPernyataanKondisi1;
+      
+      const success = await downloadPDF(
+        data, 
+        TemplateComponent, 
+        finalFilename
+      );
+      
+      if (!success && !error) {
         setLocalError("Gagal mendownload PDF");
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan";
       setLocalError(errorMessage);
       console.error("Download error:", err);
+    } finally {
+      isProcessing.current = false;
     }
   };
 
   const displayError = error || localError;
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <div className="space-y-2">
-        <Button
-          onClick={handleDownload}
-          disabled={isDownloading || !data}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          {isDownloading ? "Membuat PDF..." : "Download PDF"}
-        </Button>
-        
-        {displayError && (
-          <p className="text-sm text-red-600">{displayError}</p>
+    <div className="space-y-3 w-full max-w-md">
+      <Button
+        onClick={handleDownload}
+        disabled={isDownloading || !data}
+        className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-full transition-all duration-200"
+        aria-label={isDownloading ? "Membuat PDF..." : "Download PDF"}
+      >
+        {isDownloading ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <span>Membuat PDF... {progress}%</span>
+          </>
+        ) : (
+          <>
+            <Download className="w-4 h-4" />
+            <span>Download PDF</span>
+          </>
         )}
-      </div>
-    </Suspense>
+      </Button>
+      
+      {isDownloading && progress > 0 && (
+        <Progress value={progress} className="h-2 transition-all duration-300" />
+      )}
+      
+      {displayError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md animate-in fade-in duration-300">
+          <p className="text-sm text-red-600 font-medium">Error:</p>
+          <p className="text-sm text-red-600 mt-1">{displayError}</p>
+          <button
+            onClick={() => setLocalError(null)}
+            className="mt-2 text-sm text-red-700 hover:text-red-800 underline"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+      
+      {!isDownloading && !displayError && (
+        <p className="text-xs text-gray-500 text-center">
+          Klik tombol di atas untuk mengunduh PDF
+        </p>
+      )}
+    </div>
   );
 }

@@ -1,139 +1,104 @@
 // /hooks/usePDFDownload.ts
-import { useState, useCallback, ComponentType } from 'react';
+import { useState, useCallback, ComponentType, useRef } from 'react';
 import { FormValues } from "@/app/dashboard/SuratPernyataan/types";
 import { PDFGenerator } from "@/app/lib/pdf/PDFGenerator";
 
-// Definisikan tipe di sini jika tidak ada di PDFGenerator
-export type PDFTemplateProps = {
-  data: FormValues;
-};
-export type PDFTemplateComponentType = ComponentType<PDFTemplateProps>;
+export type PDFTemplateComponentType = ComponentType<{ data: FormValues }>;
 
 export function usePDFDownload() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
+  
+  // Gunakan ref untuk menghindari stale closures
+  const isMounted = useRef(true);
 
-  /**
-   * Download PDF dengan komponen template khusus
-   */
-  const downloadPDFWithTemplate = useCallback(async (
+  // Cleanup on unmount
+  useState(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  });
+
+  const downloadPDF = useCallback(async (
     data: FormValues,
     TemplateComponent: PDFTemplateComponentType,
-    customFilename?: string
+    filename?: string
   ) => {
+    // Reset state
+    setIsDownloading(true);
+    setError(null);
+    setProgress(10);
+    
     try {
-      setIsDownloading(true);
-      setError(null);
+      // Update progress - tidak terlalu sering untuk menghindari re-render
+      const progressInterval = setInterval(() => {
+        if (isMounted.current) {
+          setProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }
+      }, 300);
 
-      // Buat PDF element dari komponen template
-      const pdfElement = await PDFGenerator.createPDFDocument(
-        TemplateComponent,
-        data
-      );
-
-      // Generate dan download PDF
-      const result = await PDFGenerator.generateAndDownloadPDF(
+      // Generate PDF dengan timeout
+      const result = await PDFGenerator.generateAndDownload(
         data,
-        pdfElement,
-        customFilename
+        TemplateComponent,
+        filename
       );
+
+      clearInterval(progressInterval);
+      
+      if (isMounted.current) {
+        setProgress(100);
+      }
 
       if (!result.success) {
         throw new Error(result.error || 'Gagal mendownload PDF');
       }
 
+      // Delay kecil untuk memberikan feedback visual
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       return true;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Gagal mendownload PDF';
-      setError(errorMessage);
+      
+      if (isMounted.current) {
+        setError(errorMessage);
+        setProgress(0);
+      }
+      
       console.error('PDF download error:', err);
       return false;
     } finally {
-      setIsDownloading(false);
+      if (isMounted.current) {
+        setIsDownloading(false);
+        
+        // Reset progress setelah beberapa saat
+        setTimeout(() => {
+          if (isMounted.current) {
+            setProgress(0);
+          }
+        }, 1000);
+      }
     }
   }, []);
 
-  /**
-   * Download PDF dengan template berdasarkan kondisi
-   */
-  const downloadPDFByKondisi = useCallback(async (
-    data: FormValues,
-    getTemplateByKondisi: (kondisi: string) => PDFTemplateComponentType | Promise<PDFTemplateComponentType>,
-    customFilename?: string
-  ) => {
-    try {
-      setIsDownloading(true);
-      setError(null);
-
-      // Dapatkan komponen template berdasarkan kondisi
-      const TemplateComponent = await Promise.resolve(getTemplateByKondisi(data.kondisi));
-
-      if (!TemplateComponent) {
-        throw new Error(`Template untuk kondisi ${data.kondisi} tidak ditemukan`);
-      }
-
-      // Download dengan template yang sesuai
-      return await downloadPDFWithTemplate(data, TemplateComponent, customFilename);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Gagal mendownload PDF';
-      setError(errorMessage);
-      console.error('PDF download error:', err);
-      return false;
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [downloadPDFWithTemplate]);
-
-  /**
-   * Reset error state
-   */
   const resetError = useCallback(() => {
     setError(null);
   }, []);
 
-  /**
-   * Format data untuk template PDF
-   */
-  const formatDataForPDF = useCallback((data: FormValues) => {
-    return PDFGenerator.formatDataForPDF(data);
-  }, []);
-
-  /**
-   * Generate filename untuk PDF
-   */
-  const generateFilename = useCallback((data: FormValues) => {
-    return PDFGenerator.generateFilename(data);
-  }, []);
-
-  /**
-   * Get label untuk kondisi
-   */
-  const getKondisiLabel = useCallback((kondisi: string) => {
-    return PDFGenerator.getKondisiLabel(kondisi);
-  }, []);
-
-  /**
-   * Format tanggal ke format Indonesia
-   */
-  const formatTanggalIndo = useCallback((dateString: string) => {
-    return PDFGenerator.formatTanggalIndo(dateString);
-  }, []);
-
   return {
-    // Method untuk download
-    downloadPDF: downloadPDFWithTemplate,
-    downloadPDFWithTemplate,
-    downloadPDFByKondisi,
-    
-    // State
+    downloadPDF,
     isDownloading,
     error,
-    
-    // Helper methods
-    resetError,
-    formatDataForPDF,
-    generateFilename,
-    getKondisiLabel,
-    formatTanggalIndo
+    progress,
+    generateFilename: useCallback((data: FormValues) => PDFGenerator.generateFilename(data), []),
+    resetError
   };
 }

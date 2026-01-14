@@ -1,15 +1,12 @@
 // /lib/pdf/PDFGenerator.ts
 import { FormValues } from "@/app/dashboard/SuratPernyataan/types";
-import { ReactElement, ComponentType, JSXElementConstructor, ReactNode } from 'react';
+import { ComponentType } from 'react';
 
-// Type untuk PDF document element yang sesuai dengan @react-pdf/renderer
-export type PDFDocumentElement = ReactElement<
-  {
-    children?: ReactNode;
-    [key: string]: unknown;
-  },
-  string | JSXElementConstructor<unknown>
->;
+export interface PDFTemplateProps {
+  data: FormValues;
+}
+
+export type PDFTemplateComponentType = ComponentType<PDFTemplateProps>;
 
 export interface DownloadResult {
   success: boolean;
@@ -17,37 +14,13 @@ export interface DownloadResult {
   downloadUrl?: string;
 }
 
-// Tipe untuk React element dengan struktur dasar
-interface BasicReactElement {
-  type?: unknown;
-  props?: {
-    children?: ReactNode | ReactNode[];
-    [key: string]: unknown;
-  };
-  key?: string | number | null;
-  $$typeof?: symbol;
-}
-
-// Tipe untuk @react-pdf/renderer components (partial)
-interface ReactPDFComponents {
-  Document: ComponentType<{ children?: ReactNode }>;
-  Page: ComponentType<{ 
-    children?: ReactNode; 
-    size?: string; 
-    style?: Record<string, unknown> 
-  }>;
-  pdf: (element: ReactElement) => {
-    toBlob: () => Promise<Blob>;
-  };
-}
-
 export class PDFGenerator {
   /**
-   * Download PDF dengan komponen Document yang diberikan
+   * Generate dan download PDF langsung dari komponen
    */
-  static async downloadPDF(
-    data: FormValues, 
-    pdfDocumentElement: PDFDocumentElement, 
+  static async generateAndDownload(
+    data: FormValues,
+    TemplateComponent: PDFTemplateComponentType,
     filename?: string
   ): Promise<DownloadResult> {
     try {
@@ -59,23 +32,33 @@ export class PDFGenerator {
         };
       }
 
-      // Validasi bahwa element adalah Document component
-      if (!this.isDocumentElement(pdfDocumentElement)) {
-        return {
-          success: false,
-          error: "Komponen PDF harus berupa Document component dari @react-pdf/renderer"
-        };
-      }
-
-      // Dynamic import untuk menghindari SSR issues
-      const { pdf } = await import('@react-pdf/renderer') as { pdf: ReactPDFComponents['pdf'] };
+      // Dynamic import
+      const ReactPDF = await import('@react-pdf/renderer');
+      const React = await import('react');
       
-      // Create PDF
-      const pdfInstance = pdf(pdfDocumentElement);
+      // Buat komponen PDF
+      const { Document, Page } = ReactPDF;
+      
+      // Render komponen menggunakan pdf()
+      const pdfElement = React.createElement(
+        Document,
+        {},
+        React.createElement(
+          Page,
+          { size: "A4", style: { padding: 30 } },
+          React.createElement(TemplateComponent, { data })
+        )
+      );
+      
+      const pdfInstance = ReactPDF.pdf(pdfElement);
       const blob = await pdfInstance.toBlob();
       
       // Create download URL
       const url = URL.createObjectURL(blob);
+      
+      // Trigger download
+      const finalFilename = filename || this.generateFilename(data);
+      this.triggerDownload(url, finalFilename);
       
       return {
         success: true,
@@ -91,38 +74,8 @@ export class PDFGenerator {
       };
     }
   }
-
-  /**
-   * Cek apakah element adalah Document component
-   */
-  private static isDocumentElement(element: unknown): element is PDFDocumentElement {
-    if (!element || typeof element !== 'object') return false;
-    
-    // Gunakan tipe yang lebih spesifik
-    const reactElement = element as BasicReactElement;
-    
-    if (!reactElement.type || !reactElement.props) return false;
-    
-    // Cek jika ini adalah element React yang valid
-    const isReactElement = 
-      reactElement.$$typeof === Symbol.for('react.element') ||
-      (typeof reactElement.type === 'function' || typeof reactElement.type === 'string');
-    
-    // Cek jika memiliki children yang valid
-    const hasValidChildren = 
-      Array.isArray(reactElement.props.children) || 
-      typeof reactElement.props.children === 'object' ||
-      typeof reactElement.props.children === 'string' ||
-      typeof reactElement.props.children === 'undefined';
-    
-    return isReactElement && hasValidChildren;
-  }
-
-  /**
-   * Helper untuk trigger download dari URL
-   */
+  
   static triggerDownload(downloadUrl: string, filename: string): void {
-    // Validasi input
     if (!downloadUrl || !filename) {
       console.error('downloadUrl dan filename harus diisi');
       return;
@@ -137,7 +90,7 @@ export class PDFGenerator {
       link.click();
       document.body.removeChild(link);
       
-      // Cleanup setelah 1 menit
+      // Cleanup setelah download
       setTimeout(() => {
         try {
           URL.revokeObjectURL(downloadUrl);
@@ -148,68 +101,6 @@ export class PDFGenerator {
     } catch (error) {
       console.error('Error triggering download:', error);
     }
-  }
-
-  /**
-   * Method yang menggabungkan generate dan download
-   */
-  static async generateAndDownloadPDF(
-    data: FormValues, 
-    pdfDocumentElement: PDFDocumentElement, 
-    filename?: string
-  ): Promise<DownloadResult> {
-    const result = await this.downloadPDF(data, pdfDocumentElement, filename);
-    
-    if (result.success && result.downloadUrl) {
-      const finalFilename = filename || this.generateFilename(data);
-      this.triggerDownload(result.downloadUrl, finalFilename);
-    }
-    
-    return result;
-  }
-
-  /**
-   * Helper untuk membuat PDF Document element
-   */
-  static async createPDFDocument(
-    TemplateComponent: ComponentType<{ data: FormValues }>,
-    data: FormValues
-  ): Promise<PDFDocumentElement> {
-    // Dynamic import Document dan komponen PDF
-    const { Document, Page } = await import('@react-pdf/renderer') as { 
-      Document: ReactPDFComponents['Document']; 
-      Page: ReactPDFComponents['Page'] 
-    };
-    
-    // Buat Template element dengan tipe yang lebih spesifik
-    const TemplateElement: ReactElement<{ data: FormValues }> = {
-      type: TemplateComponent,
-      props: { data },
-      key: null,
-      $$typeof: Symbol.for('react.element')
-    } as ReactElement<{ data: FormValues }>;
-    
-    // Buat Page element dengan Template sebagai children
-    const PageElement: ReactElement = {
-      type: Page,
-      props: {
-        size: "A4" as const,
-        style: { padding: 30 },
-        children: TemplateElement
-      },
-      key: null,
-      $$typeof: Symbol.for('react.element')
-    } as ReactElement;
-    
-    // Buat Document element
-    return {
-      type: Document,
-      props: {
-        children: PageElement
-      },
-      key: null,
-      $$typeof: Symbol.for('react.element')
-    } as PDFDocumentElement;
   }
 
   /**
@@ -242,9 +133,6 @@ export class PDFGenerator {
     };
   }
 
-  /**
-   * Helper untuk mendapatkan label kondisi
-   */
   static getKondisiLabel(kondisi: string): string {
     const kondisiMap: Record<string, string> = {
       'kondisi1': 'Pewaris memiliki 1 istri dan semua anak masih hidup',
@@ -262,7 +150,6 @@ export class PDFGenerator {
    * Generate nama file PDF
    */
   static generateFilename(data: FormValues): string {
-    // Handle kasus dataPewaris tidak ada
     const name = (data.dataPewaris?.nama || 'unknown')
       .toLowerCase()
       .normalize('NFD')
@@ -305,11 +192,9 @@ export class PDFGenerator {
     
     const formData = data as Partial<FormValues>;
     
-    // Cek properti dasar
     if (!formData.dataPewaris?.nama) return false;
     if (!formData.kondisi) return false;
     
-    // Validasi untuk semua kondisi kecuali kondisi 6
     if (formData.kondisi !== "kondisi6" && (!formData.ahliWaris || formData.ahliWaris.length === 0)) {
       return false;
     }
@@ -324,13 +209,5 @@ export class PDFGenerator {
     if (error instanceof Error) return error.message;
     if (typeof error === 'string') return error;
     return 'Terjadi kesalahan yang tidak diketahui';
-  }
-
-  /**
-   * Utility untuk membersihkan URL object yang tidak terpakai
-   */
-  static cleanup(): void {
-    // Method untuk manual cleanup jika diperlukan
-    // Tidak ada implementasi spesifik karena URL.revokeObjectURL sudah dipanggil otomatis
   }
 }

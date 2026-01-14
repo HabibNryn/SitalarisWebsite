@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -14,15 +14,20 @@ import AhliWarisForm from "./components/AhliWarisForm";
 import { formSchema } from "./constants/schemas";
 import { defaultDataPewaris, defaultAhliWaris, templateIstri, templateAnakDariIstri } from "./constants/defaultValues";
 import { FormValues } from "./types";
-import { getAnakPerIstri } from "./utils/keluargaHelper";
 
 export default function FormPernyataanWarisan() {
   const router = useRouter();
   const [jumlahAnak, setJumlahAnak] = useState(0);
   const [jumlahCucu, setJumlahCucu] = useState(0);
   const [jumlahSaudara, setJumlahSaudara] = useState(0);
-  const [anakPerIstri, setAnakPerIstri] = useState<number[]>([0, 0]); // Untuk kondisi 4
+  const [anakPerIstri, setAnakPerIstri] = useState<number[]>([0, 0]);
   const [formData, setFormData] = useState<FormValues | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  
+  // Ref untuk mencegah multiple submission
+  const isProcessing = useRef(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -106,7 +111,7 @@ export default function FormPernyataanWarisan() {
       setJumlahAnak(2);
       setJumlahCucu(0);
       setJumlahSaudara(0);
-      setAnakPerIstri([1, 1]); // 1 anak per istri
+      setAnakPerIstri([1, 1]);
       
     } else if (kondisi === "kondisi5") {
       // Kondisi 5: Suami hidup
@@ -166,7 +171,7 @@ export default function FormPernyataanWarisan() {
     const newAnakNumber = currentAnak + 1;
     const newAnak = templateAnakDariIstri(istriNumber, newAnakNumber);
     
-    // Sisipkan anak sebelum istri terkait (untuk pengelompokan visual)
+    // Sisipkan anak sebelum istri terkait
     const newAhliWaris = [...currentAhliWaris];
     newAhliWaris.splice(targetIstriIndex, 0, newAnak);
     
@@ -193,21 +198,67 @@ export default function FormPernyataanWarisan() {
     setAnakPerIstri(newAnakPerIstri);
   };
 
-  const onSubmit = async (data: FormValues) => {
-    console.log("Data pernyataan warisan:", data);
+  const handleSave = async () => {
+    // Cegah multiple submission
+    if (isProcessing.current || isSaving) {
+      return;
+    }
 
     try {
-      const isValid = await form.trigger();
+      isProcessing.current = true;
+      setIsSaving(true);
+      setSaveError(null);
+      setSaveSuccess(false);
 
+      // Validasi form
+      const isValid = await form.trigger();
+      
       if (!isValid) {
-        alert("Harap isi semua field yang diperlukan!");
+        const errors = form.formState.errors;
+        console.log("Form errors:", errors);
+        
+        // Temukan field pertama yang error
+        const firstError = Object.keys(errors)[0];
+        if (firstError) {
+          setSaveError(`Harap periksa field: ${firstError}`);
+        } else {
+          setSaveError("Harap isi semua field yang diperlukan!");
+        }
         return;
       }
+
+      // Ambil data dari form
+      const data = form.getValues();
+      console.log("Data pernyataan warisan:", data);
+
+      // Simpan ke state dengan timeout untuk mencegah UI blocking
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       setFormData(data);
-      alert("Data berhasil disimpan! Anda dapat mendownload PDF sekarang.");
+      setSaveSuccess(true);
+      
+      // Reset success message setelah 3 detik
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+
     } catch (error) {
-      console.error("Error submitting form:", error);
-      alert("Terjadi kesalahan saat menyimpan data!");
+      console.error("Error saving form:", error);
+      setSaveError("Terjadi kesalahan saat menyimpan data!");
+    } finally {
+      setIsSaving(false);
+      isProcessing.current = false;
+    }
+  };
+
+  const handleCancel = () => {
+    if (isSaving) {
+      if (window.confirm("Proses penyimpanan sedang berjalan. Yakin ingin membatalkan?")) {
+        isProcessing.current = false;
+        router.back();
+      }
+    } else {
+      router.back();
     }
   };
 
@@ -221,7 +272,7 @@ export default function FormPernyataanWarisan() {
       />
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <div className="space-y-8">
           <KondisiSelector form={form} />
 
           {kondisi && <DataPewarisForm form={form} />}
@@ -232,12 +283,12 @@ export default function FormPernyataanWarisan() {
               jumlahAnak={jumlahAnak}
               jumlahCucu={jumlahCucu}
               jumlahSaudara={jumlahSaudara}
-              anakPerIstri={anakPerIstri} // Pass new prop
+              anakPerIstri={anakPerIstri}
               setJumlahAnak={setJumlahAnak}
               setJumlahCucu={setJumlahCucu}
               setJumlahSaudara={setJumlahSaudara}
-              tambahAnakKeIstri={tambahAnakKeIstri} // Pass new function
-              hapusAnakDariIstri={hapusAnakDariIstri} // Pass new function
+              tambahAnakKeIstri={tambahAnakKeIstri}
+              hapusAnakDariIstri={hapusAnakDariIstri}
             />
           )}
 
@@ -252,36 +303,79 @@ export default function FormPernyataanWarisan() {
             )}
           </div>
 
+          {/* Status messages */}
+          {saveError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md animate-in fade-in">
+              <p className="text-sm text-red-600 font-medium">Error:</p>
+              <p className="text-sm text-red-600 mt-1">{saveError}</p>
+              <button
+                onClick={() => setSaveError(null)}
+                className="mt-2 text-sm text-red-700 hover:text-red-800 underline"
+              >
+                Tutup
+              </button>
+            </div>
+          )}
+
+          {saveSuccess && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md animate-in fade-in">
+              <p className="text-sm text-green-600 font-medium">Berhasil!</p>
+              <p className="text-sm text-green-600 mt-1">
+                Data berhasil disimpan. Anda dapat mendownload PDF sekarang.
+              </p>
+            </div>
+          )}
+
           {kondisi && (
             <div className="flex justify-end gap-3 pt-6">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.back()}
+                onClick={handleCancel}
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                disabled={isSaving}
               >
                 Batal
               </Button>
 
               <Button
-                type="submit"
+                type="button"
+                onClick={handleSave}
                 className="bg-green-600 hover:bg-green-700 text-white px-8"
-                disabled={form.formState.isSubmitting}
+                disabled={isSaving}
               >
-                {form.formState.isSubmitting
-                  ? "Menyimpan..."
-                  : "Simpan & Generate PDF"}
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Data"
+                )}
               </Button>
 
-              {formData && (
-                <DownloadPDFButton
-                  data={formData}
-                  fileName={`Surat-Pernyataan-Ahli-Waris-${formData.dataPewaris.nama}.pdf`}
-                />
+              {formData && !isSaving && (
+                <div className="ml-2">
+                  <DownloadPDFButton
+                    data={formData}
+                    fileName={`Surat-Pernyataan-Ahli-Waris-${formData.dataPewaris.nama}.pdf`}
+                  />
+                </div>
               )}
             </div>
           )}
-        </form>
+
+          {/* Info penting */}
+          {kondisi && !formData && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-600 font-medium">Info:</p>
+              <p className="text-sm text-blue-600 mt-1">
+                Klik <strong>Simpan Data</strong> terlebih dahulu untuk memvalidasi dan menyimpan data.
+                Setelah data berhasil disimpan, tombol <strong>Download PDF</strong> akan muncul.
+              </p>
+            </div>
+          )}
+        </div>
       </Form>
     </div>
   );
