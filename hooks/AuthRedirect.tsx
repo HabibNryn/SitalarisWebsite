@@ -1,38 +1,43 @@
-// hooks/useAuthRedirect.ts
+// hooks/useAuthRedirect.ts - Versi sederhana
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 
 export function useAuthRedirect() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
 
-  useEffect(() => {
-    if (status !== "loading") {
-      setIsChecking(false);
-    }
-  }, [status]);
-
-  const checkAuthAndRedirect = (targetPath: string = "/dashboard") => {
+  const checkAuthAndRedirect = useCallback((targetPath: string = "/dashboard") => {
     if (status === "loading") return;
 
     if (session) {
-      // User sudah login, arahkan ke target path (dashboard/default)
       router.push(targetPath);
     } else {
-      // User belum login, arahkan ke login page
       router.push("/login");
     }
-  };
+  }, [session, status, router]);
+
+  const getAuthState = useCallback(() => {
+    return {
+      isLoggedIn: !!session,
+      isLoading: status === "loading",
+      shouldRedirectToLogin: status !== "loading" && !session,
+      shouldRedirectToDashboard: status !== "loading" && !!session,
+    };
+  }, [session, status]);
 
   return {
+    // Method untuk auth check dan redirect
     checkAuthAndRedirect,
-    isLoggedIn: !!session,
-    isChecking,
+    
+    // Auth state
+    ...getAuthState(),
     session,
-    status
+    status,
+    
+    // Helper untuk conditional rendering
+    shouldShowContent: status !== "loading",
   };
 }

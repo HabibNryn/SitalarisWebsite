@@ -1,60 +1,101 @@
+// /components/DownloadPDFButton.tsx
 "use client";
 
-import { useState } from "react";
-import SuratPernyataanPDF from "./SuratPernyataanPDF";
+import { useState, lazy, Suspense, ComponentType } from "react";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { FormValues } from "@/app/dashboard/SuratPernyataan/types";
+import { usePDFDownload, PDFTemplateComponentType } from "@/hooks/hooks/usePDFDownload";
 
 interface DownloadPDFButtonProps {
-  data: any;
+  data: FormValues;
   fileName?: string;
+  templateType?: string; // 'default' | 'kondisi1' | 'kondisi2' | etc.
 }
 
-export default function DownloadPDFButton({
-  data,
-  fileName = "surat-pernyataan-ahli-waris.pdf",
+export default function DownloadPDFButton({ 
+  data, 
+  fileName,
+  templateType = 'default'
 }: DownloadPDFButtonProps) {
-  const [loading, setLoading] = useState(false);
+  const { 
+    downloadPDF,
+    downloadPDFWithTemplate,
+    isDownloading, 
+    error,
+    generateFilename 
+  } = usePDFDownload();
+  
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleDownload = async () => {
     if (!data) {
-      alert("Data belum siap");
+      setLocalError("Data belum siap");
       return;
     }
 
     try {
-      setLoading(true);
+      const finalFilename = fileName || generateFilename(data);
+      let success: boolean;
 
-      // 🔥 WAJIB dynamic import
-      const { pdf } = await import("@react-pdf/renderer");
+      if (templateType === 'default') {
+        // Gunakan template default - perlu mendefinisikan template default
+        const DefaultTemplate = lazy(() => import('@/app/components/surat-templates/SuratPernyataanKondisi1'));
+        
+        success = await downloadPDFWithTemplate(
+          data,
+          DefaultTemplate as PDFTemplateComponentType,
+          finalFilename
+        );
+      } else {
+        // Gunakan template khusus berdasarkan kondisi
+        const templateMap: Record<string, ComponentType<{ data: FormValues }>> = {
+          'kondisi1': lazy(() => import('@/app/components/surat-templates/SuratPernyataanKondisi1')),
+          // 'kondisi2': lazy(() => import('@/app/components/surat-templates/SuratPernyataanKondisi2')),
+          // ... tambahkan template lainnya
+        };
 
-      const blob = await pdf(
-        <SuratPernyataanPDF data={data} />
-      ).toBlob();
+        const LazyTemplate = templateMap[templateType];
+        
+        if (!LazyTemplate) {
+          throw new Error(`Template untuk ${templateType} tidak ditemukan`);
+        }
 
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Gagal download PDF:", error);
-      alert("Gagal membuat PDF");
-    } finally {
-      setLoading(false);
+        success = await downloadPDFWithTemplate(
+          data,
+          LazyTemplate as PDFTemplateComponentType,
+          finalFilename
+        );
+      }
+      
+      if (!success) {
+        setLocalError("Gagal mendownload PDF");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan";
+      setLocalError(errorMessage);
+      console.error("Download error:", err);
     }
   };
 
+  const displayError = error || localError;
+
   return (
-    <button
-      onClick={handleDownload}
-      disabled={loading}
-      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-    >
-      {loading ? "Membuat PDF..." : "Download PDF"}
-    </button>
+    <Suspense fallback={<div>Loading...</div>}>
+      <div className="space-y-2">
+        <Button
+          onClick={handleDownload}
+          disabled={isDownloading || !data}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          {isDownloading ? "Membuat PDF..." : "Download PDF"}
+        </Button>
+        
+        {displayError && (
+          <p className="text-sm text-red-600">{displayError}</p>
+        )}
+      </div>
+    </Suspense>
   );
 }

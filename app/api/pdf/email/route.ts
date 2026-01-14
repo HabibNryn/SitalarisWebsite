@@ -1,5 +1,4 @@
 import { transporter } from '@/app/lib/mailer';
-import fs from 'fs';
 import path from 'path';
 
 export async function POST(req: Request) {

@@ -1,24 +1,15 @@
 // /lib/pdf/PDFGenerator.ts
 import { FormValues } from "@/app/dashboard/SuratPernyataan/types";
-import { ReactElement, ComponentType, ReactNode } from 'react';
+import { ReactElement, ComponentType, JSXElementConstructor, ReactNode } from 'react';
 
-// Interface untuk props PDF template
-export interface PDFTemplateProps {
-  data: FormValues;
-}
-
-// Type untuk komponen PDF template
-export type PDFTemplateComponentType = ComponentType<PDFTemplateProps>;
-
-// Type untuk komponen yang sudah wrapped dengan Document
+// Type untuk PDF document element yang sesuai dengan @react-pdf/renderer
 export type PDFDocumentElement = ReactElement<
-  { children?: ReactNode },
-  | string 
-  | React.JSXElementConstructor<{ children?: ReactNode }>
+  {
+    children?: ReactNode;
+    [key: string]: unknown;
+  },
+  string | JSXElementConstructor<unknown>
 >;
-
-// Type untuk komponen template yang sudah jadi PDF element
-export type PDFReactElement = PDFDocumentElement;
 
 export interface DownloadResult {
   success: boolean;
@@ -26,15 +17,33 @@ export interface DownloadResult {
   downloadUrl?: string;
 }
 
-// Interface untuk properti Document dari @react-pdf/renderer
-interface DocumentProps {
-  children?: ReactNode;
-  [key: string]: unknown;
+// Tipe untuk React element dengan struktur dasar
+interface BasicReactElement {
+  type?: unknown;
+  props?: {
+    children?: ReactNode | ReactNode[];
+    [key: string]: unknown;
+  };
+  key?: string | number | null;
+  $$typeof?: symbol;
+}
+
+// Tipe untuk @react-pdf/renderer components (partial)
+interface ReactPDFComponents {
+  Document: ComponentType<{ children?: ReactNode }>;
+  Page: ComponentType<{ 
+    children?: ReactNode; 
+    size?: string; 
+    style?: Record<string, unknown> 
+  }>;
+  pdf: (element: ReactElement) => {
+    toBlob: () => Promise<Blob>;
+  };
 }
 
 export class PDFGenerator {
   /**
-   * Download PDF dengan komponen yang diberikan
+   * Download PDF dengan komponen Document yang diberikan
    */
   static async downloadPDF(
     data: FormValues, 
@@ -59,10 +68,11 @@ export class PDFGenerator {
       }
 
       // Dynamic import untuk menghindari SSR issues
-      const { pdf } = await import('@react-pdf/renderer');
+      const { pdf } = await import('@react-pdf/renderer') as { pdf: ReactPDFComponents['pdf'] };
       
-      // Create PDF - element harus berupa Document component
-      const blob = await pdf(pdfDocumentElement).toBlob();
+      // Create PDF
+      const pdfInstance = pdf(pdfDocumentElement);
+      const blob = await pdfInstance.toBlob();
       
       // Create download URL
       const url = URL.createObjectURL(blob);
@@ -88,27 +98,31 @@ export class PDFGenerator {
   private static isDocumentElement(element: unknown): element is PDFDocumentElement {
     if (!element || typeof element !== 'object') return false;
     
-    const reactElement = element as { 
-      type?: unknown; 
-      props?: { children?: ReactNode };
-      $$typeof?: symbol;
-    };
+    // Gunakan tipe yang lebih spesifik
+    const reactElement = element as BasicReactElement;
     
-    // Cek struktur dasar React element
     if (!reactElement.type || !reactElement.props) return false;
     
-    // Cek jika ini adalah React element yang valid
+    // Cek jika ini adalah element React yang valid
     const isReactElement = 
       reactElement.$$typeof === Symbol.for('react.element') ||
       (typeof reactElement.type === 'function' || typeof reactElement.type === 'string');
     
-    return isReactElement;
+    // Cek jika memiliki children yang valid
+    const hasValidChildren = 
+      Array.isArray(reactElement.props.children) || 
+      typeof reactElement.props.children === 'object' ||
+      typeof reactElement.props.children === 'string' ||
+      typeof reactElement.props.children === 'undefined';
+    
+    return isReactElement && hasValidChildren;
   }
 
   /**
    * Helper untuk trigger download dari URL
    */
   static triggerDownload(downloadUrl: string, filename: string): void {
+    // Validasi input
     if (!downloadUrl || !filename) {
       console.error('downloadUrl dan filename harus diisi');
       return;
@@ -155,30 +169,33 @@ export class PDFGenerator {
   }
 
   /**
-   * Method untuk membuat PDF Document element dari komponen template
+   * Helper untuk membuat PDF Document element
    */
-  static async createPDFDocumentElement(
-    TemplateComponent: PDFTemplateComponentType,
+  static async createPDFDocument(
+    TemplateComponent: ComponentType<{ data: FormValues }>,
     data: FormValues
   ): Promise<PDFDocumentElement> {
-    // Dynamic import Document dan Page dari @react-pdf/renderer
-    const { Document, Page } = await import('@react-pdf/renderer');
+    // Dynamic import Document dan komponen PDF
+    const { Document, Page } = await import('@react-pdf/renderer') as { 
+      Document: ReactPDFComponents['Document']; 
+      Page: ReactPDFComponents['Page'] 
+    };
     
-    // Buat Template element
-    const templateElement: ReactElement<PDFTemplateProps> = {
+    // Buat Template element dengan tipe yang lebih spesifik
+    const TemplateElement: ReactElement<{ data: FormValues }> = {
       type: TemplateComponent,
       props: { data },
       key: null,
       $$typeof: Symbol.for('react.element')
-    } as ReactElement<PDFTemplateProps>;
+    } as ReactElement<{ data: FormValues }>;
     
     // Buat Page element dengan Template sebagai children
-    const pageElement: ReactElement = {
+    const PageElement: ReactElement = {
       type: Page,
       props: {
         size: "A4" as const,
         style: { padding: 30 },
-        children: templateElement
+        children: TemplateElement
       },
       key: null,
       $$typeof: Symbol.for('react.element')
@@ -188,26 +205,11 @@ export class PDFGenerator {
     return {
       type: Document,
       props: {
-        children: pageElement
+        children: PageElement
       },
       key: null,
       $$typeof: Symbol.for('react.element')
     } as PDFDocumentElement;
-  }
-
-  /**
-   * Method alternatif yang lebih sederhana (jika TemplateComponent sudah mengembalikan Document)
-   */
-  static createPDFElement(
-    TemplateComponent: PDFTemplateComponentType,
-    data: FormValues
-  ): ReactElement<PDFTemplateProps> {
-    return {
-      type: TemplateComponent,
-      props: { data },
-      key: null,
-      $$typeof: Symbol.for('react.element')
-    } as ReactElement<PDFTemplateProps>;
   }
 
   /**

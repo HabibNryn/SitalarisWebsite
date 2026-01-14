@@ -1,10 +1,20 @@
-// app/api/auth/[...nextauth]/route.ts - FIXED VERSION
+// app/api/auth/[...nextauth]/route.ts
 import NextAuth, { type DefaultSession, type NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+
+// Helper function untuk error handling
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return "Terjadi kesalahan yang tidak diketahui";
+}
 
 // ==================== TYPE EXTENSIONS ====================
 declare module "next-auth" {
@@ -159,9 +169,10 @@ export const authOptions: NextAuthOptions = {
             image: user.image,
           };
           
-        } catch (error: any) {
-          console.error("Auth error:", error.message);
-          throw new Error(error.message || "Terjadi kesalahan saat login");
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error);
+          console.error("Auth error:", errorMessage);
+          throw new Error(errorMessage);
         }
       },
     }),
@@ -218,8 +229,15 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/dashboard`;
     },
     
-    async signIn({ user, account, profile, isNewUser }) {
+    async signIn({ user, account}) {
       try {
+        // Cek apakah user baru dengan mengecek ke database
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+        });
+        
+        const isNewUser = !existingUser;
+        
         console.log("Sign in attempt:", {
           userId: user.id,
           email: user.email,
@@ -237,7 +255,7 @@ export const authOptions: NextAuthOptions = {
             await prisma.user.update({
               where: { email: user.email! },
               data: { 
-                role: "USER",
+                role: "user", 
                 isActive: true,
               },
             });
@@ -247,8 +265,8 @@ export const authOptions: NextAuthOptions = {
         
         return true;
         
-      } catch (error) {
-        console.error("Sign in error:", error);
+      } catch (error: unknown) {
+        console.error("Sign in error:", getErrorMessage(error));
         return false;
       }
     },
@@ -269,17 +287,16 @@ export const authOptions: NextAuthOptions = {
         if (!dbUser?.role) {
           await prisma.user.update({
             where: { email: user.email },
-            data: { role: "USER" }
+            data: { role: "user" }
           });
           console.log("Set default role for new user:", user.email);
         }
       }
     },
     
-    async signIn({ user, account, isNewUser }) {
+    async signIn({ user, account }) {
       console.log("User signed in:", {
         email: user.email,
-        isNewUser,
         provider: account?.provider,
       });
     },

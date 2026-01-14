@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["next-auth"],
+    "types": ["next-auth","node", "react", "react-dom"],
     "target": "ES2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -15,6 +15,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "incremental": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
     "plugins": [
       {
         "name": "next"
