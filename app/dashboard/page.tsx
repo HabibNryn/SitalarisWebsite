@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { 
   FileText, 
   Clock, 
-  CheckCircle, 
-  AlertCircle,
+  CheckCircle,
   Download,
   Eye,
   ArrowRight

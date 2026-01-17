@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "types": ["next-auth","node", "react", "react-dom"],
-    "target": "ES2020",
+    "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -12,7 +12,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "jsxImportSource": "react",
     "incremental": true,
     "typeRoots": ["./node_modules/@types", "./types"],
