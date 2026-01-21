@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, FileText, Loader2 } from 'lucide-react';
 import { FormValues } from '../types';
@@ -9,7 +9,6 @@ interface DownloadPDFButtonProps {
   disabled?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
-  fileName?: string;
 }
 
 export default function DownloadPDFButton({
@@ -21,142 +20,57 @@ export default function DownloadPDFButton({
   const [isLoading, setIsLoading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  // Fungsi validasi data - PERBAIKAN DI SINI
-  const validateDataForPDF = (data: FormValues): boolean => {
-    // Gunakan data.dataPewaris BUKAN data.pewaris
-    if (!data.dataPewaris?.nama) return false;
-    if (!data.dataPewaris?.tempatLahir) return false;
-    if (!data.dataPewaris?.tanggalLahir) return false;
-    if (!data.dataPewaris?.alamat) return false;
-    
-    // Validasi minimal satu ahli waris (kecuali kondisi 6 - tidak ada ahli waris)
-    if (data.kondisi !== "kondisi6" && (!data.ahliWaris || data.ahliWaris.length === 0)) {
+  const isValid = useMemo(() => {
+    if (!data?.dataPewaris?.nama) return false;
+    if (!data.dataPewaris.tempatLahir) return false;
+    if (!data.dataPewaris.tanggalLahir) return false;
+    if (!data.dataPewaris.alamat) return false;
+
+    if (data.kondisi !== 'kondisi6' && (!data.ahliWaris || data.ahliWaris.length === 0)) {
       return false;
     }
-    
+
     return true;
-  };
+  }, [data]);
 
   const handleDownload = async () => {
-    if (!data || disabled) return;
-    
-    // Validasi sebelum download
-    if (!validateDataForPDF(data)) {
-      onError?.(new Error("Data tidak lengkap. Silakan lengkapi semua field yang diperlukan."));
-      return;
-    }
-    
+    if (!isValid || disabled) return;
+
     setIsLoading(true);
     try {
-      const filename = `surat-pernyataan-ahli-waris-${data.dataPewaris.nama || 'document'}-${Date.now()}.pdf`;
+      const filename = `surat-pernyataan-${data.dataPewaris.nama}-${Date.now()}.pdf`;
       await downloadPDF(data, filename);
       onSuccess?.();
-    } catch (error) {
-      console.error('Download failed:', error);
-      onError?.(error as Error);
+    } catch (err) {
+      onError?.(err as Error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePreview = async () => {
-    if (!data || disabled) return;
-    
-    // Validasi sebelum preview
-    if (!validateDataForPDF(data)) {
-      onError?.(new Error("Data tidak lengkap. Silakan lengkapi semua field yang diperlukan sebelum preview."));
-      return;
-    }
-    
+    if (!isValid || disabled) return;
+
     setIsPrinting(true);
     try {
       await openPDFInNewTab(data);
-    } catch (error) {
-      console.error('Preview failed:', error);
-      onError?.(error as Error);
+    } catch (err) {
+      onError?.(err as Error);
     } finally {
       setIsPrinting(false);
     }
   };
 
-  const handleGenerateAndSave = async () => {
-    if (!data || disabled) return;
-    
-    // Validasi sebelum save & download
-    if (!validateDataForPDF(data)) {
-      onError?.(new Error("Data tidak lengkap. Silakan lengkapi semua field yang diperlukan."));
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      // Save to database first
-      const saveResponse = await fetch('/api/surat-pernyataan/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!saveResponse.ok) {
-        const errorText = await saveResponse.text();
-        throw new Error(`Failed to save data: ${errorText}`);
-      }
-
-      const savedData = await saveResponse.json();
-      
-      // Then download PDF
-      const filename = `surat-pernyataan-${savedData.documentId || Date.now()}.pdf`;
-      await downloadPDF(data, filename);
-      
-      onSuccess?.();
-    } catch (error) {
-      console.error('Save and download failed:', error);
-      onError?.(error as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="flex gap-3">
-      <Button
-        onClick={handleDownload}
-        disabled={disabled || isLoading || !validateDataForPDF(data)}
-        className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-        title={!validateDataForPDF(data) ? "Data tidak lengkap. Silakan lengkapi semua field." : ""}
-      >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        ) : (
-          <Download className="w-4 h-4 mr-2" />
-        )}
-        Download PDF
+      <Button onClick={handleDownload} disabled={!isValid || isLoading}>
+        {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
+        Download
       </Button>
-      
-      <Button
-        onClick={handlePreview}
-        disabled={disabled || isPrinting || !validateDataForPDF(data)}
-        variant="outline"
-        className="border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        title={!validateDataForPDF(data) ? "Data tidak lengkap. Silakan lengkapi semua field." : ""}
-      >
-        {isPrinting ? (
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        ) : (
-          <FileText className="w-4 h-4 mr-2" />
-        )}
+
+      <Button variant="outline" onClick={handlePreview} disabled={!isValid || isPrinting}>
+        {isPrinting ? <Loader2 className="animate-spin mr-2" /> : <FileText className="mr-2" />}
         Preview
-      </Button>
-      
-      <Button
-        onClick={handleGenerateAndSave}
-        disabled={disabled || isLoading || !validateDataForPDF(data)}
-        variant="outline"
-        className="border-purple-300 text-purple-600 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        title={!validateDataForPDF(data) ? "Data tidak lengkap. Silakan lengkapi semua field." : ""}
-      >
-        <Printer className="w-4 h-4 mr-2" />
-        Save & Download
       </Button>
     </div>
   );

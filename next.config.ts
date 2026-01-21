@@ -1,29 +1,32 @@
-// next.config.ts - Versi Minimal
+// next.config.ts
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: false, // Nonaktifkan sementara untuk debug
-  
-  webpack: (config) => {
-    // Fix untuk @react-pdf/renderer
+  reactStrictMode: false,
+
+  webpack: (config, { isServer }) => {
+
     config.resolve.alias = {
-      ...config.resolve.alias,
-      'react/jsx-runtime': require.resolve('react/jsx-runtime'),
+      ...(config.resolve.alias || {}),
+      "@": path.resolve(__dirname),
     };
 
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      stream: false,
-      path: false,
-    };
+    if (!isServer) {
+      config.resolve.fallback = {
+        fs: false,
+        path: false,
+        stream: false,
+        crypto: false,
+        os: false,
+      };
+    }
 
     return config;
   },
 
-  // Nonaktifkan fitur yang mungkin bermasalah
   experimental: {
-    optimizePackageImports: [], // Kosongkan array
+    optimizePackageImports: [],
   },
 };
 

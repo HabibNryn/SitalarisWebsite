@@ -6,7 +6,37 @@ import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-// Helper function untuk error handling
+export const runtime = "nodejs"; // WAJIB untuk Prisma + CredentialsProvider
+
+// ==================== TYPE EXTENSIONS ====================
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      role: string;
+      isActive: boolean;
+      phone?: string | null;
+      isAdmin?: boolean;
+    } & DefaultSession["user"];
+  }
+
+  interface User {
+    role: string;
+    phone?: string | null;
+    isActive?: boolean;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: string;
+    phone?: string | null;
+    isActive?: boolean;
+  }
+}
+
+// ==================== HELPER ====================
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -16,67 +46,31 @@ function getErrorMessage(error: unknown): string {
   return "Terjadi kesalahan yang tidak diketahui";
 }
 
-// ==================== TYPE EXTENSIONS ====================
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      role: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      phone?: string | null;
-      isActive?: boolean;
-      isAdmin?: boolean;
-    } & DefaultSession["user"]
-  }
-
-  interface User {
-    role: string;
-    phone?: string | null;
-    isActive: boolean;
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    role: string;
-    phone?: string | null;
-    isActive: boolean;
-  }
-}
-
 // ==================== AUTH OPTIONS ====================
 export const authOptions: NextAuthOptions = {
-  // Database adapter
   adapter: PrismaAdapter(prisma),
-  
-  // Session configuration
+
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
-  
-  // ==================== FIXED PAGES CONFIG ====================
+
   pages: {
     signIn: "/login",
     error: "/login",
   },
-  
-  // ==================== PROVIDERS ====================
+
   providers: [
-    // Google OAuth
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       profile(profile) {
         return {
           id: profile.sub,
-          name: profile.name || profile.email?.split('@')[0] || 'User',
+          name: profile.name || profile.email?.split("@")[0] || "User",
           email: profile.email,
           image: profile.picture,
-          role: "USER", // ⬅️ GUNAKAN UPPERCASE konsisten dengan database
+          role: "USER",
           isActive: true,
           phone: null,
         };
@@ -85,37 +79,24 @@ export const authOptions: NextAuthOptions = {
         params: {
           prompt: "consent",
           access_type: "offline",
-          response_type: "code"
-        }
-      }
+          response_type: "code",
+        },
+      },
     }),
-    
-    // Credentials (Email/Password)
+
     CredentialsProvider({
       id: "credentials",
       name: "Email dan Password",
       credentials: {
-        email: { 
-          label: "Email", 
-          type: "email", 
-          placeholder: "admin@sitalaris.com" 
-        },
-        password: { 
-          label: "Password", 
-          type: "password",
-          placeholder: "••••••••" 
-        },
+        email: { label: "Email", type: "email", placeholder: "admin@sitalaris.com" },
+        password: { label: "Password", type: "password", placeholder: "••••••••" },
       },
       async authorize(credentials) {
         try {
-          // Validation
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error("Email dan password harus diisi");
-          }
-          
+          if (!credentials?.email || !credentials?.password) return null;
+
           const email = credentials.email.toLowerCase().trim();
-          
-          // Find user
+
           const user = await prisma.user.findUnique({
             where: { email },
             select: {
@@ -126,39 +107,23 @@ export const authOptions: NextAuthOptions = {
               role: true,
               isActive: true,
               image: true,
-              emailVerified: true,
               phone: true,
             },
           });
-          
-          // User not found
-          if (!user) {
-            throw new Error("Email tidak terdaftar");
-          }
-          
-          // Account inactive
-          if (!user.isActive) {
-            throw new Error("Akun dinonaktifkan. Hubungi administrator.");
-          }
-          
-          // Check password (for users without password, they must use OAuth)
-          if (!user.password) {
-            throw new Error("Akun ini menggunakan metode login lain (Google)");
-          }
-          
-          // Verify password
+
+          if (!user) return null;
+          if (!user.isActive) return null;
+          if (!user.password) return null;
+
           const isValid = await bcrypt.compare(credentials.password, user.password);
-          if (!isValid) {
-            throw new Error("Password salah");
-          }
-          
+          if (!isValid) return null;
+
           // Update last login
           await prisma.user.update({
             where: { id: user.id },
             data: { lastLogin: new Date() },
           });
-          
-          // Return user object for JWT
+
           return {
             id: user.id,
             email: user.email,
@@ -168,174 +133,83 @@ export const authOptions: NextAuthOptions = {
             isActive: user.isActive,
             image: user.image,
           };
-          
-        } catch (error: unknown) {
-          const errorMessage = getErrorMessage(error);
-          console.error("Auth error:", errorMessage);
-          throw new Error(errorMessage);
+        } catch (error) {
+          console.error("Auth error:", getErrorMessage(error));
+          return null;
         }
       },
     }),
   ],
-  
-  // ==================== CALLBACKS ====================
+
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      // Initial sign in
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role.toUpperCase(); // ⬅️ Normalize role to uppercase
+        token.role = user.role.toUpperCase();
         token.phone = user.phone;
         token.isActive = user.isActive;
       }
-      
-      // Update session
-      if (trigger === "update" && session) {
-        token = { ...token, ...session };
-      }
-      
       return token;
     },
-    
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.phone = token.phone as string;
         session.user.isActive = token.isActive as boolean;
-        
-        // Add admin check helper (gunakan UPPERCASE untuk konsisten)
-        session.user.isAdmin = token.role === "ADMIN" || token.role === "SUPER_ADMIN";
+        session.user.isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(token.role);
       }
-      
       return session;
     },
-    
+
     async redirect({ url, baseUrl }) {
-      // ==================== FIXED REDIRECT LOGIC ====================
-      console.log("Redirect callback called:", { url, baseUrl });
-      
-      // Handle callback URLs (OAuth returns)
-      if (url.includes('/api/auth/callback')) {
-        return `${baseUrl}/`; // Redirect ke root setelah OAuth
-      }
-      
-      // Handle new user redirect (Google signup)
-      if (url.includes('/register')) {
-        return `${baseUrl}/dashboard`;
-      }
-      
-      // Default redirect to dashboard
+      if (url.includes("/api/auth/callback")) return `${baseUrl}/`;
+      if (url.includes("/register")) return `${baseUrl}/dashboard`;
       return `${baseUrl}/dashboard`;
     },
-    
-    async signIn({ user, account}) {
-      try {
-        // Cek apakah user baru dengan mengecek ke database
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+
+    async signIn({ user, account }) {
+      if (!user.email) return false;
+
+      const existingUser = await prisma.user.findUnique({ where: { email: user.email } });
+
+      // jika user baru via Google, set default role
+      if (!existingUser && account?.provider === "google") {
+        await prisma.user.update({
+          where: { email: user.email },
+          data: { role: "user", isActive: true },
         });
-        
-        const isNewUser = !existingUser;
-        
-        console.log("Sign in attempt:", {
-          userId: user.id,
-          email: user.email,
-          provider: account?.provider,
-          isNewUser,
-          timestamp: new Date().toISOString(),
-        });
-        
-        // Handle Google signup - update role jika user baru
-        if (isNewUser && account?.provider === 'google') {
-          console.log("New Google user, updating role...");
-          
-          // Pastikan role ada untuk user Google
-          if (!user.role) {
-            await prisma.user.update({
-              where: { email: user.email! },
-              data: { 
-                role: "user", 
-                isActive: true,
-              },
-            });
-            console.log("Updated new Google user role to USER");
-          }
-        }
-        
-        return true;
-        
-      } catch (error: unknown) {
-        console.error("Sign in error:", getErrorMessage(error));
-        return false;
       }
+
+      return true;
     },
   },
-  
-  // ==================== EVENTS ====================
+
   events: {
     async createUser({ user }) {
-      console.log("New user created via:", user.email);
-      
-      // For Google users, ensure they have proper role
-      if (user.email) {
-        const dbUser = await prisma.user.findUnique({
+      if (!user.email) return;
+      const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+      if (!dbUser?.role) {
+        await prisma.user.update({
           where: { email: user.email },
-          select: { role: true }
+          data: { role: "user", isActive: true },
         });
-        
-        if (!dbUser?.role) {
-          await prisma.user.update({
-            where: { email: user.email },
-            data: { role: "user" }
-          });
-          console.log("Set default role for new user:", user.email);
-        }
       }
     },
-    
-    async signIn({ user, account }) {
-      console.log("User signed in:", {
-        email: user.email,
-        provider: account?.provider,
-      });
-    },
-    
-    async signOut({ token }) {
-      console.log("User signed out:", token?.email);
-    },
   },
-  
-  // ==================== CONFIGURATION ====================
+
   secret: process.env.NEXTAUTH_SECRET,
-  
-  // Security
   useSecureCookies: process.env.NODE_ENV === "production",
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-      },
-    },
-  },
-  
-  // Debug in development
   debug: process.env.NODE_ENV === "development",
-  
-  // Theme (optional)
+
   theme: {
     colorScheme: "light",
-    brandColor: "#2563eb", // blue-600
-    logo: "/logo.png", // optional
+    brandColor: "#2563eb",
+    logo: "/logo.png",
   },
 };
 
 // ==================== API HANDLER ====================
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
