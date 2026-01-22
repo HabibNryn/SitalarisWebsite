@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, FileText, Loader2 } from 'lucide-react';
+import { Download, FileText, Loader2 } from 'lucide-react';
 import { FormValues } from '../types';
 import { downloadPDF, openPDFInNewTab } from '../services/pdfService';
 

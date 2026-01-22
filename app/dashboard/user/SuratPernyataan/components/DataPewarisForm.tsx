@@ -12,7 +12,6 @@ import {
 import Input from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../types";
-import { formatDateForInput } from "../utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Info } from "lucide-react";
 import { getKondisiLabel } from "../constants/schemas";

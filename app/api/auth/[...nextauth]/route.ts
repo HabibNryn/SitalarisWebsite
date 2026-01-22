@@ -16,7 +16,7 @@ declare module "next-auth" {
       role: string;
       isActive: boolean;
       phone?: string | null;
-      isAdmin?: boolean;
+      isAdmin: boolean;
     } & DefaultSession["user"];
   }
 
@@ -24,6 +24,7 @@ declare module "next-auth" {
     role: string;
     phone?: string | null;
     isActive?: boolean;
+    isAdmin?: boolean;
   }
 }
 
@@ -33,6 +34,7 @@ declare module "next-auth/jwt" {
     role: string;
     phone?: string | null;
     isActive?: boolean;
+    isAdmin?: boolean;
   }
 }
 
@@ -73,6 +75,7 @@ export const authOptions: NextAuthOptions = {
           role: "USER",
           isActive: true,
           phone: null,
+          isAdmin: false, // Tambahkan isAdmin untuk Google users
         };
       },
       authorization: {
@@ -80,6 +83,7 @@ export const authOptions: NextAuthOptions = {
           prompt: "consent",
           access_type: "offline",
           response_type: "code",
+          scope: "openid email profile",
         },
       },
     }),
@@ -88,8 +92,16 @@ export const authOptions: NextAuthOptions = {
       id: "credentials",
       name: "Email dan Password",
       credentials: {
-        email: { label: "Email", type: "email", placeholder: "admin@sitalaris.com" },
-        password: { label: "Password", type: "password", placeholder: "••••••••" },
+        email: {
+          label: "Email",
+          type: "email",
+          placeholder: "admin@sitalaris.com",
+        },
+        password: {
+          label: "Password",
+          type: "password",
+          placeholder: "••••••••",
+        },
       },
       async authorize(credentials) {
         try {
@@ -115,7 +127,10 @@ export const authOptions: NextAuthOptions = {
           if (!user.isActive) return null;
           if (!user.password) return null;
 
-          const isValid = await bcrypt.compare(credentials.password, user.password);
+          const isValid = await bcrypt.compare(
+            credentials.password,
+            user.password,
+          );
           if (!isValid) return null;
 
           // Update last login
@@ -123,6 +138,10 @@ export const authOptions: NextAuthOptions = {
             where: { id: user.id },
             data: { lastLogin: new Date() },
           });
+
+          // PERBAIKAN: Tambahkan isAdmin di sini berdasarkan role
+          const role = user.role?.toUpperCase() || "USER";
+          const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(role);
 
           return {
             id: user.id,
@@ -132,6 +151,7 @@ export const authOptions: NextAuthOptions = {
             phone: user.phone,
             isActive: user.isActive,
             image: user.image,
+            isAdmin: isAdmin,
           };
         } catch (error) {
           console.error("Auth error:", getErrorMessage(error));
@@ -142,13 +162,47 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Initial sign in
       if (user) {
         token.id = user.id;
-        token.role = user.role.toUpperCase();
+        token.role = user.role?.toUpperCase() || "USER";
         token.phone = user.phone;
         token.isActive = user.isActive;
+
+        // PERBAIKAN: Set isAdmin dari user jika ada, atau hitung dari role
+        if (typeof user.isAdmin === "boolean") {
+          token.isAdmin = user.isAdmin;
+        } else {
+          // Hitung dari role jika isAdmin tidak ada di user
+          const role = user.role?.toUpperCase() || "USER";
+          token.isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(role);
+        }
+
+        console.log("🔐 JWT callback - User sign in:", {
+          role: token.role,
+          isAdmin: token.isAdmin,
+          userId: token.id,
+        });
       }
+
+      // Always ensure isAdmin is set based on current role
+      // Ini penting untuk existing tokens yang tidak memiliki isAdmin
+      if (token.role && token.isAdmin === undefined) {
+        const isAdminValue = ["ADMIN", "SUPER_ADMIN"].includes(token.role);
+        token.isAdmin = isAdminValue;
+        console.log("🔐 JWT callback - Setting missing isAdmin:", {
+          role: token.role,
+          isAdmin: token.isAdmin,
+        });
+      }
+
+      // Handle session updates (if using useSession update)
+      if (trigger === "update" && session) {
+        console.log("🔐 JWT callback - Session update:", session);
+        token = { ...token, ...session };
+      }
+
       return token;
     },
 
@@ -158,29 +212,57 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.phone = token.phone as string;
         session.user.isActive = token.isActive as boolean;
-        session.user.isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(token.role);
+
+        // PERBAIKAN Kritis: Pastikan isAdmin selalu ada dan benar
+        // Priority 1: Gunakan isAdmin dari token jika ada
+        if (typeof token.isAdmin === "boolean") {
+          session.user.isAdmin = token.isAdmin;
+        } else {
+          // Priority 2: Hitung dari role jika isAdmin tidak ada di token
+          const role = token.role?.toUpperCase() || "USER";
+          session.user.isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(role);
+        }
+
+        console.log("🔐 Session callback - Final session:", {
+          role: session.user.role,
+          isAdmin: session.user.isAdmin,
+          tokenHasIsAdmin: "isAdmin" in token,
+          tokenIsAdminValue: token.isAdmin,
+        });
       }
       return session;
     },
 
-    async redirect({ url, baseUrl }) {
-      if (url.includes("/api/auth/callback")) return `${baseUrl}/`;
-      if (url.includes("/register")) return `${baseUrl}/dashboard`;
-      return `${baseUrl}/dashboard`;
-    },
+async redirect({ url, baseUrl }) {
+  if (url.startsWith("/")) {
+    return `${baseUrl}${url}`;
+  }
+  if (new URL(url).origin === baseUrl) {
+    return url;
+  }
+  return baseUrl;
+},
 
     async signIn({ user, account }) {
       if (!user.email) return false;
 
-      const existingUser = await prisma.user.findUnique({ where: { email: user.email } });
+      const existingUser = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
 
       // jika user baru via Google, set default role
-      if (!existingUser && account?.provider === "google") {
-        await prisma.user.update({
-          where: { email: user.email },
-          data: { role: "user", isActive: true },
-        });
-      }
+if (!existingUser && account?.provider === "google") {
+  await prisma.user.create({
+    data: {
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      role: "user",
+      isActive: true,
+    },
+  });
+}
+
 
       return true;
     },
@@ -189,7 +271,9 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       if (!user.email) return;
-      const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+      const dbUser = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
       if (!dbUser?.role) {
         await prisma.user.update({
           where: { email: user.email },

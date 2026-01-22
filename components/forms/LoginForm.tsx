@@ -4,7 +4,15 @@
 import { useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail, Lock, ShieldCheck, Building2, Users, FileCheck } from "lucide-react";
+import {
+  Loader2,
+  Mail,
+  Lock,
+  ShieldCheck,
+  Building2,
+  Users,
+  FileCheck,
+} from "lucide-react";
 import Image from "next/image";
 
 export default function LoginForm() {
@@ -26,11 +34,8 @@ export default function LoginForm() {
       password,
     });
 
-    setLoading(false);
-
-    if (res?.error) {
-      setError("Email atau password salah");
-      return;
+    if (!res?.error) {
+      router.push("/login");
     }
 
     // Redirect ke dashboard setelah login berhasil
@@ -41,29 +46,14 @@ export default function LoginForm() {
     setGoogleLoading(true);
     setError("");
 
-    try {
-      const result = await signIn("google", {
-        redirect: false,
-        callbackUrl: "/dashboard"
-      });
+    await signIn("google", {
+      redirect: false,
+      callbackUrl: "/login",
+    });
 
-      if (result?.error) {
-        setError("Login dengan Google gagal");
-        setGoogleLoading(false);
-        return;
-      }
-
-      // Jika login berhasil, NextAuth akan otomatis redirect ke callbackUrl
-      if (result?.url) {
-        router.push(result.url);
-      } else {
-        router.push("/dashboard");
-      }
-      
-    } catch (error) {
-      setError("Terjadi kesalahan saat login dengan Google");
-      setGoogleLoading(false);
-    }
+    await signIn("google", {
+      callbackUrl: "/login", // cukup ini
+    });
   };
 
   return (
@@ -208,7 +198,10 @@ export default function LoginForm() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
                 Belum Punya Akun?{" "}
-                <a href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+                <a
+                  href="/register"
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
                   Daftar Disini
                 </a>
               </p>
@@ -238,32 +231,43 @@ export default function LoginForm() {
 
             <h2 className="text-4xl font-bold mb-6 leading-tight">
               Layanan Pembuatan
-              <span className="block text-blue-200">Surat Keterangan Ahli Waris</span>
+              <span className="block text-blue-200">
+                Surat Keterangan Ahli Waris
+              </span>
             </h2>
 
             <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-              Mulai Buat Surat Keterangan Ahli Waris dengan mudah dan cepat melalui
-              sistem kami. Dapatkan layanan terpercaya untuk kebutuhan administrasi
-              desa Anda.
+              Mulai Buat Surat Keterangan Ahli Waris dengan mudah dan cepat
+              melalui sistem kami. Dapatkan layanan terpercaya untuk kebutuhan
+              administrasi desa Anda.
             </p>
 
             {/* Features List */}
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Masuk Dengan Alamat Email dan Password</span>
+                <span className="text-blue-100">
+                  Masuk Dengan Alamat Email dan Password
+                </span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Atau Langsung Masuk Dengan Akun Google Anda</span>
+                <span className="text-blue-100">
+                  Atau Langsung Masuk Dengan Akun Google Anda
+                </span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Jika Belum Mempunyai Akun, Daftar dengan menekan `Daftar Disini`</span>
+                <span className="text-blue-100">
+                  Jika Belum Mempunyai Akun, Daftar dengan menekan `Daftar
+                  Disini`
+                </span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Lalu Anda Akan Diarahkan Ke Halaman Dashboard</span>
+                <span className="text-blue-100">
+                  Lalu Anda Akan Diarahkan Ke Halaman Dashboard
+                </span>
               </div>
             </div>
 

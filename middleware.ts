@@ -1,45 +1,84 @@
+// middleware.ts
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
-    const path = req.nextUrl.pathname;
+    const pathname = req.nextUrl.pathname;
 
-    // Khusus route admin
-    if (path.startsWith("/admin")) {
-      if (!token?.isAdmin) {
-        return NextResponse.redirect(new URL("/login", req.url));
+    // ======================
+    // ADMIN DASHBOARD
+    // ======================
+    if (pathname.startsWith("/dashboard/admin")) {
+      const isAdmin =
+        token?.isAdmin === true ||
+        token?.role === "ADMIN" ||
+        token?.role === "SUPER_ADMIN";
+
+      if (!isAdmin) {
+        return NextResponse.redirect(
+          new URL("/dashboard/user", req.url),
+        );
       }
     }
 
-    // Khusus route admin biasa
-    if (path.startsWith("/dashboard/admin")) {
-      if (token?.role !== "admin" && token?.role !== "super_admin") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+    // ======================
+    // USER DASHBOARD
+    // ======================
+    if (pathname.startsWith("/dashboard/user")) {
+      if (!token) {
+        return NextResponse.redirect(
+          new URL("/login", req.url),
+        );
       }
     }
 
-    // Khusus route super admin
-    if (path.startsWith("/dashboard/admin/super")) {
-      if (token?.role !== "super_admin") {
-        return NextResponse.redirect(new URL("/dashboard/admin", req.url));
-      }
+    // ======================
+    // ROOT DASHBOARD REDIRECT
+    // ======================
+    if (pathname === "/dashboard" && token) {
+      const isAdmin =
+        token.isAdmin === true ||
+        token.role === "ADMIN" ||
+        token.role === "SUPER_ADMIN";
+
+      return NextResponse.redirect(
+        new URL(
+          isAdmin ? "/dashboard/admin" : "/dashboard/user",
+          req.url,
+        ),
+      );
     }
 
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ req }) => {
+        const pathname = req.nextUrl.pathname;
+
+        // PUBLIC ROUTES
+        if (
+          pathname === "/" ||
+          pathname.startsWith("/login") ||
+          pathname.startsWith("/register") ||
+          pathname.startsWith("/api/auth")
+        ) {
+          return true;
+        }
+
+        // PROTECTED ROUTES
+        if (pathname.startsWith("/dashboard")) {
+          return true;
+        }
+
+        return true;
+      },
     },
-  }
+  },
 );
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/permohonan/:path*",
-    "/admin/:path*",
-  ],
+  matcher: ["/dashboard/:path*"],
 };

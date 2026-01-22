@@ -1,12 +1,12 @@
 // components/ui/sidebar.tsx
 "use client";
-import { Home, FilePlus2, History, User, HelpCircle } from "lucide-react";
+import { Home, FilePlus2, HelpCircle } from "lucide-react";
 import cn from "classnames";
 import { useRouter, usePathname } from "next/navigation";
 
 const menuItems = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
-  { label: "Buat Surat", icon: FilePlus2, path: "/dashboard/SuratPernyataan" }, // ✅ Update path
+  { label: "Buat Surat", icon: FilePlus2, path: "/dashboard/user/SuratPernyataan" }, // ✅ Update path
   { label: "Bantuan", icon: HelpCircle, path: "/dashboard/bantuan" }
 ];
 

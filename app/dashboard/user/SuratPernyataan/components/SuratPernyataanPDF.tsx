@@ -407,18 +407,6 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
     return nomor;
   };
 
-  const getHubunganLabel = (hubungan: string): string => {
-    const labels: Record<string, string> = {
-      ISTRI: "Istri",
-      SUAMI: "Suami",
-      ANAK: "Anak",
-      CUCU: "Cucu",
-      SAUDARA: "Saudara Kandung",
-      ORANG_TUA: "Orang Tua",
-      LAINNYA: "Lainnya",
-    };
-    return labels[hubungan] || hubungan;
-  };
 
   // Format tanggal lengkap untuk surat
   const currentDate = new Date();
