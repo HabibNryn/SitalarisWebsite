@@ -1,42 +1,32 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String   @id @default(cuid())
-  name          String?
-  email         String?  @unique
-  password      String?
-  emailVerified DateTime?
-  role          UserRole @default(user)
-  isAdmin       Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  isActive      Boolean  @default(true)
-  phone         String?
-  lastLogin     DateTime?
-
-  accounts             Account[]
+  id                  String                @id @default(cuid())
+  name                String?
+  email               String?               @unique
+  password            String?
+  emailVerified       DateTime?
+  role                UserRole              @default(user)
+  image               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  isActive            Boolean               @default(true)
+  lastLogin           DateTime?
+  phone               String?
+  isAdmin             Boolean               @default(false)
+  accounts            Account[]
+  documentLogs        DocumentLog[]
+  permohonanAhliWaris PermohonanAhliWaris[]
+  profile             Profile?
   sessions            Session[]
   suratPernyataan     SuratPernyataan[]
-  profile             Profile?
-  permohonanAhliWaris PermohonanAhliWaris[]
-  documentLogs        DocumentLog[]
-}
-
-enum UserRole {
-  user
-  admin
-  super_admin
 }
 
 model Account {
@@ -45,15 +35,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -63,8 +52,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -76,67 +64,136 @@ model VerificationToken {
 }
 
 model PermohonanAhliWaris {
-  id                   String   @id @default(cuid())
-  userId               String?
-  user                 User?    @relation(fields: [userId], references: [id])
-
-  email                String
-  nomorTelepon         String?
-
-  namaPemohon          String
-  nikPemohon           String
-  alamatPemohon        String
+  id                    String           @id @default(cuid())
+  userId                String?
+  email                 String
+  nomorTelepon          String?
+  namaPemohon           String
+  nikPemohon            String
+  alamatPemohon         String
   hubunganDenganPewaris String
+  namaPewaris           String
+  nikPewaris            String
+  alamatPewaris         String
+  tanggalMeninggal      DateTime
+  statusPernikahan      String
+  daftarAhliWaris       Json
+  createdAt             DateTime         @default(now())
+  statusPermohonan      StatusPermohonan @default(PENDING)
+  agamaPewaris          String?
+  catatanAdmin          String?
+  instansiNikah         String?
+  noSuratNikah          String?
+  nomorAkteKematian     String?
+  pekerjaanPewaris      String?
+  suratPernyataanId     String?          @unique
+  tanggalAkteKematian   DateTime?
+  tanggalLahirPewaris   DateTime?
+  tanggalNikah          DateTime?
+  tempatLahirPewaris    String?
+  updatedAt             DateTime         @updatedAt
+  suratPernyataan       SuratPernyataan? @relation(fields: [suratPernyataanId], references: [id])
+  user                  User?            @relation(fields: [userId], references: [id])
 
-  namaPewaris          String
-  nikPewaris           String
-  alamatPewaris        String
-  tanggalMeninggal     DateTime
-
-  statusPernikahan     String // menikah_1, menikah_2, cerai
-  daftarAhliWaris      Json
-  statusPermohonan     StatusPermohonan @default(PENDING)
-  catatanAdmin         String?
-  
-  // Data tambahan untuk PDF generation
-  nomorAkteKematian    String?
-  tanggalAkteKematian  DateTime?
-  tempatLahirPewaris   String?
-  tanggalLahirPewaris  DateTime?
-  pekerjaanPewaris     String?
-  agamaPewaris         String?
-  
-  // Data pernikahan
-  noSuratNikah         String?
-  tanggalNikah         DateTime?
-  instansiNikah        String? // KUA/Dukcapil
-  
-  // Relasi dengan SuratPernyataan (one-to-one)
-  suratPernyataan      SuratPernyataan? @relation(fields: [suratPernyataanId], references: [id])
-  suratPernyataanId    String? @unique
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
   @@index([statusPermohonan])
   @@index([userId])
   @@index([createdAt])
 }
 
 model Profile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  id           String    @id @default(cuid())
+  userId       String    @unique
   alamat       String?
   nomorTelepon String?
   tanggalLahir DateTime?
-  pekerjaan    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   agama        String?
   nik          String?
+  pekerjaan    String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model SuratPernyataan {
+  id                   String               @id @default(cuid())
+  nomorSurat           String               @unique
+  tanggalSurat         DateTime             @default(now())
+  namaPewaris          String
+  namaAyahPewaris      String
+  tempatLahirPewaris   String
+  tanggalLahirPewaris  DateTime
+  alamatPewaris        String
+  rtPewaris            String?
+  rwPewaris            String?
+  kelurahanPewaris     String               @default("Grogol")
+  kecamatanPewaris     String               @default("Grogol Petamburan")
+  kotaPewaris          String               @default("Jakarta Barat")
+  tempatMeninggal      String?
+  tanggalMeninggal     DateTime?
+  noAkteKematian       String?
+  tanggalAkteKematian  DateTime?
+  instansiAkteKematian String?              @default("Dinas Dukcapil Provinsi DKI Jakarta")
+  statusPernikahan     String
+  noSuratNikah         String?
+  tanggalNikah         DateTime?
+  instansiNikah        String?
+  ahliWaris            Json
+  jumlahAnak           Int                  @default(0)
+  jumlahIstri          Int                  @default(0)
+  jumlahSaudara        Int                  @default(0)
+  jumlahCucu           Int                  @default(0)
+  kondisi              String
+  status               StatusSurat          @default(DRAFT)
+  catatan              String?
+  isGenerated          Boolean              @default(false)
+  generatedAt          DateTime?
+  downloadCount        Int                  @default(0)
+  pdfFileName          String?
+  pdfFileSize          Int?
+  pdfLastGenerated     DateTime?
+  userId               String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  agamaPewaris         String?
+  pekerjaanPewaris     String?
+  documentLogs         DocumentLog[]
+  permohonan           PermohonanAhliWaris?
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nomorSurat])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DocumentLog {
+  id                String          @id @default(cuid())
+  suratPernyataanId String
+  userId            String?
+  action            DocumentAction
+  details           String?
+  ipAddress         String?
+  userAgent         String?
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+  suratPernyataan   SuratPernyataan @relation(fields: [suratPernyataanId], references: [id], onDelete: Cascade)
+  user              User?           @relation(fields: [userId], references: [id])
+
+  @@index([suratPernyataanId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model playing_with_neon {
+  id    Int    @id @default(autoincrement())
+  name  String
+  value Float? @db.Real
+}
+
+enum UserRole {
+  user
+  admin
+  super_admin
 }
 
 enum StatusPermohonan {
@@ -147,75 +204,6 @@ enum StatusPermohonan {
   COMPLETED
 }
 
-model SuratPernyataan {
-  id                String   @id @default(cuid())
-  nomorSurat        String   @unique
-  tanggalSurat      DateTime @default(now())
-  
-  // Data Pewaris (structured)
-  namaPewaris       String
-  namaAyahPewaris   String
-  tempatLahirPewaris String
-  tanggalLahirPewaris DateTime
-  alamatPewaris     String
-  rtPewaris         String?
-  rwPewaris         String?
-  kelurahanPewaris  String   @default("Grogol")
-  kecamatanPewaris  String   @default("Grogol Petamburan")
-  kotaPewaris       String   @default("Jakarta Barat")
-  tempatMeninggal   String?
-  tanggalMeninggal  DateTime?
-  pekerjaanPewaris  String?
-  agamaPewaris      String?
-  
-  // Data Kematian
-  noAkteKematian    String?
-  tanggalAkteKematian DateTime?
-  instansiAkteKematian String? @default("Dinas Dukcapil Provinsi DKI Jakarta")
-  
-  // Data Pernikahan
-  statusPernikahan  String   // "MENIKAH_1", "MENIKAH_2", "CERAI", "DUDA_JANDA"
-  noSuratNikah      String?
-  tanggalNikah      DateTime?
-  instansiNikah     String?  // KUA/Dukcapil
-  
-  // Data Ahli Waris (disimpan sebagai JSON untuk fleksibilitas)
-  ahliWaris         Json
-  
-  // Data tambahan untuk PDF
-  jumlahAnak        Int      @default(0)
-  jumlahIstri       Int      @default(0)
-  jumlahSaudara     Int      @default(0)
-  jumlahCucu        Int      @default(0)
-  
-  // Metadata
-  kondisi           String   // "kondisi1", "kondisi2", "kondisi3", "kondisi4", "kondisi5", "kondisi6", "kondisi7"
-  status            StatusSurat @default(DRAFT)
-  catatan           String?
-  isGenerated       Boolean  @default(false)
-  generatedAt       DateTime?
-  downloadCount     Int      @default(0)
-  
-  // File info
-  pdfFileName       String?
-  pdfFileSize       Int?
-  pdfLastGenerated  DateTime?
-  
-  // Relasi
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permohonan        PermohonanAhliWaris?
-  documentLogs      DocumentLog[]
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@index([nomorSurat])
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt])
-}
-
 enum StatusSurat {
   DRAFT
   SUBMITTED
@@ -223,26 +211,6 @@ enum StatusSurat {
   APPROVED
   REJECTED
   ARCHIVED
-}
-
-model DocumentLog {
-  id                String   @id @default(cuid())
-  suratPernyataanId String
-  suratPernyataan   SuratPernyataan @relation(fields: [suratPernyataanId], references: [id], onDelete: Cascade)
-  userId            String?
-  user              User?    @relation(fields: [userId], references: [id])
-  
-  action            DocumentAction
-  details           String?
-  ipAddress         String?
-  userAgent         String?
-  metadata          Json?
-  
-  createdAt         DateTime @default(now())
-  
-  @@index([suratPernyataanId])
-  @@index([action])
-  @@index([createdAt])
 }
 
 enum DocumentAction {

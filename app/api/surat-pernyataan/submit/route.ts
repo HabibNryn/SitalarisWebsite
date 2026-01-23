@@ -1,190 +1,232 @@
-// app/api/surat-pernyataan/submit/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+// app/api/auth/[...nextauth]/route.ts
+import NextAuth, { type DefaultSession, type NextAuthOptions } from "next-auth";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { FormValues } from "@/app/dashboard/user/SuratPernyataan/types";
+import bcrypt from "bcryptjs";
 
-// Helper function untuk parse tanggal dengan aman
-function parseDateSafely(dateString?: string): Date | null {
-  if (!dateString) return null;
-  try {
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? null : date;
-  } catch {
-    return null;
+export const runtime = "nodejs"; // WAJIB untuk Prisma + CredentialsProvider
+
+// ==================== TYPE EXTENSIONS ====================
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      role: string;
+      isActive: boolean;
+      phone?: string | null;
+      isAdmin: boolean;
+    } & DefaultSession["user"];
+  }
+
+  interface User {
+    role: string;
+    phone?: string | null;
+    isActive: boolean;
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: string;
+    phone?: string | null;
+    isActive: boolean;
+  }
+}
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+// ==================== HELPER ====================
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return "Terjadi kesalahan yang tidak diketahui";
+}
 
-    const data: FormValues = await request.json();
+// ==================== AUTH OPTIONS ====================
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
 
-    // Validasi data wajib
-    if (!data.dataPewaris?.nama) {
-      return NextResponse.json(
-        { error: "Nama pewaris harus diisi" },
-        { status: 400 },
-      );
-    }
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+  },
 
-    if (!data.dataPewaris?.tanggalLahir) {
-      return NextResponse.json(
-        { error: "Tanggal lahir pewaris harus diisi" },
-        { status: 400 },
-      );
-    }
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
 
-    if (!data.dataPewaris?.tanggalMeninggal) {
-      return NextResponse.json(
-        { error: "Tanggal meninggal pewaris harus diisi" },
-        { status: 400 },
-      );
-    }
-
-    // Generate nomor surat
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const random = Math.random().toString(36).substr(2, 6).toUpperCase();
-    const nomorSurat = `SP-${year}${month}${day}-${random}`;
-
-    // Parse tanggal dengan aman
-    const tanggalLahirPewaris = parseDateSafely(data.dataPewaris.tanggalLahir);
-    const tanggalMeninggalPewaris = parseDateSafely(
-      data.dataPewaris.tanggalMeninggal,
-    );
-    const tanggalAkteKematian = parseDateSafely(
-      data.dataPewaris.tanggalAkteKematian,
-    );
-    const tanggalNikah = parseDateSafely(data.dataPewaris.tanggalNikah);
-
-    if (!tanggalLahirPewaris || !tanggalMeninggalPewaris) {
-      return NextResponse.json(
-        { error: "Format tanggal tidak valid" },
-        { status: 400 },
-      );
-    }
-
-    // Hitung jumlah ahli waris
-    const ahliWaris = data.ahliWaris || [];
-    const jumlahIstri = ahliWaris.filter(
-      (item) => item.hubungan === "ISTRI",
-    ).length;
-    const jumlahAnak = ahliWaris.filter(
-      (item) => item.hubungan === "ANAK",
-    ).length;
-    const jumlahSaudara = ahliWaris.filter(
-      (item) => item.hubungan === "SAUDARA",
-    ).length;
-    const jumlahCucu = ahliWaris.filter(
-      (item) => item.hubungan === "CUCU",
-    ).length;
-
-    // Siapkan data untuk Prisma dengan tipe yang benar
-    const suratPernyataanData = {
-      nomorSurat,
-      userId: session.user.id,
-      kondisi: data.kondisi,
-
-      // Data Pewaris - wajib
-      namaPewaris: data.dataPewaris.nama,
-      namaAyahPewaris: data.dataPewaris.namaAyah || "",
-      tempatLahirPewaris: data.dataPewaris.tempatLahir || "",
-      tanggalLahirPewaris: tanggalLahirPewaris,
-      alamatPewaris: data.dataPewaris.alamat || "",
-
-      // Data Meninggal - wajib
-      tempatMeninggal: data.dataPewaris.tempatMeninggal || "",
-      tanggalMeninggal: tanggalMeninggalPewaris,
-
-      // Data tambahan - opsional
-      rtPewaris: data.dataPewaris.rtPewaris,
-      rwPewaris: data.dataPewaris.rwPewaris,
-
-      // Data Kematian - opsional
-      noAkteKematian: data.dataPewaris.nomorAkteKematian,
-      tanggalAkteKematian: tanggalAkteKematian,
-
-      // Data Pernikahan - opsional
-      statusPernikahan: data.dataPewaris.statusPernikahan || "MENIKAH_1",
-      noSuratNikah: data.dataPewaris.noSuratNikah,
-      tanggalNikah: tanggalNikah,
-      instansiNikah: data.dataPewaris.instansiNikah,
-
-      // Data Ahli Waris
-      ahliWaris: data.ahliWaris || [],
-
-      // Jumlah untuk statistik
-      jumlahIstri,
-      jumlahAnak,
-      jumlahSaudara,
-      jumlahCucu,
-
-      // Status - default ke DRAFT jika ada masalah
-      status: "SUBMITTED" as const, // Gunakan const assertion untuk tipe literal
-
-      catatan: data.tambahanKeterangan,
-    };
-
-    console.log("Creating surat pernyataan with data:", {
-      ...suratPernyataanData,
-      ahliWaris: "Data ahli waris ada",
-    });
-
-    // Save to database
-    const submission = await prisma.suratPernyataan.create({
-      data: suratPernyataanData,
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name || profile.email?.split("@")[0] || "User",
+          email: profile.email,
+          image: profile.picture,
+          role: "USER",
+          isActive: true,
+          phone: null,
+        };
+      },
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
         },
       },
-    });
+    }),
 
-    // Log action
-    await prisma.documentLog.create({
-      data: {
-        suratPernyataanId: submission.id,
-        userId: session.user.id,
-        action: "CREATE",
-        details: `Surat pernyataan dibuat dengan nomor ${nomorSurat}`,
+    CredentialsProvider({
+      id: "credentials",
+      name: "Email dan Password",
+      credentials: {
+        email: { label: "Email", type: "email", placeholder: "admin@sitalaris.com" },
+        password: { label: "Password", type: "password", placeholder: "••••••••" },
       },
-    });
+      async authorize(credentials) {
+        try {
+          if (!credentials?.email || !credentials?.password) return null;
 
-    return NextResponse.json({
-      success: true,
-      data: submission,
-      message: "Surat pernyataan berhasil diajukan",
-    });
-  } catch (error: any) {
-    console.error("Submit error details:", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    });
+          const email = credentials.email.toLowerCase().trim();
 
-    // Cek jika error Prisma
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "Nomor surat sudah ada. Silakan coba lagi." },
-        { status: 400 },
-      );
-    }
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              password: true,
+              role: true,
+              isActive: true,
+              image: true,
+              phone: true,
+            },
+          });
 
-    return NextResponse.json(
-      { error: `Failed to submit surat pernyataan: ${error.message}` },
-      { status: 500 },
-    );
-  }
-}
+          if (!user) return null;
+          if (!user.isActive) return null;
+          if (!user.password) return null;
+
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isValid) return null;
+
+          // Update last login
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() },
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            phone: user.phone,
+            isActive: user.isActive,
+            image: user.image,
+          };
+        } catch (error) {
+          console.error("Auth error:", getErrorMessage(error));
+          return null;
+        }
+      },
+    }),
+  ],
+
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.role.toUpperCase();
+        token.phone = user.phone;
+        token.isActive = user.isActive;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.phone = token.phone as string;
+        session.user.isActive = token.isActive as boolean;
+        session.user.isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(token.role);
+      }
+      return session;
+    },
+
+    async redirect({ url, baseUrl }) {
+      if (url.includes("/api/auth/callback")) return `${baseUrl}/`;
+      if (url.includes("/register")) return `${baseUrl}/dashboard`;
+      if (url.startsWith("http")) return url;
+      return `${baseUrl}/dashboard`;
+    },
+
+    async signIn({ user, account }) {
+      if (!user.email) return false;
+
+      const existingUser = await prisma.user.findUnique({ where: { email: user.email } });
+
+      // Jika user sudah ada, izinkan login
+      if (existingUser) {
+        // Jika login dengan Google baru, pastikan akun OAuth terhubung
+        if (account?.provider === "google") {
+          await prisma.account.upsert({
+            where: {
+              provider_providerAccountId: {
+                provider: "google",
+                providerAccountId: account.providerAccountId,
+              },
+            },
+            update: {},
+            create: {
+              userId: existingUser.id,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              access_token: account.access_token,
+              token_type: account.token_type,
+              scope: account.scope,
+            },
+          });
+        }
+        return true;
+      }
+
+      // Jika user baru, biarkan NextAuth membuat user otomatis
+      return true;
+    },
+  },
+
+  events: {
+    async createUser({ user }) {
+      if (!user.email) return;
+      await prisma.user.update({
+        where: { email: user.email },
+        data: { role: "user", isActive: true },
+      });
+    },
+  },
+
+  secret: process.env.NEXTAUTH_SECRET,
+  useSecureCookies: process.env.NODE_ENV === "production",
+  debug: process.env.NODE_ENV === "development",
+
+  theme: {
+    colorScheme: "light",
+    brandColor: "#2563eb",
+    logo: "/logo.png",
+  },
+};
+
+// ==================== API HANDLER ====================
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };

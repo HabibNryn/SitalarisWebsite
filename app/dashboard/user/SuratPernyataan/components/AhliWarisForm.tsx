@@ -20,6 +20,13 @@ import { getKondisiLabel } from "../constants/schemas";
 
 interface Props {
   form: UseFormReturn<FormValues>;
+  jumlahAnak?: number;
+  jumlahCucu?: number;
+  jumlahSaudara?: number;
+  anakPerIstri?: number[];
+  setJumlahAnak?: () => void;
+  setJumlahCucu?: () => void;
+  setJumlahSaudara?: () => void;
 }
 
 export default function AhliWarisForm({ form }: Props) {
@@ -190,7 +197,9 @@ export default function AhliWarisForm({ form }: Props) {
 
   const tambahIstri = () => {
     if (dataPewaris?.jenisKelamin === "LAKI-LAKI") {
-      const istriCount = ahliWaris.filter((a: DataKeluargaType) => a.hubungan === "ISTRI").length + 1;
+      const istriCount =
+        ahliWaris.filter((a: DataKeluargaType) => a.hubungan === "ISTRI")
+          .length + 1;
       if (istriCount <= 2) {
         append({
           nama: "",
@@ -230,13 +239,14 @@ export default function AhliWarisForm({ form }: Props) {
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Untuk kondisi ini, tidak perlu menambahkan istri, suami, anak, atau
-              cucu.
+              Untuk kondisi ini, tidak perlu menambahkan istri, suami, anak,
+              atau cucu.
             </p>
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                Lanjutkan ke pengisian data pewaris dan klik Simpan Data untuk melanjutkan.
+                Lanjutkan ke pengisian data pewaris dan klik Simpan Data untuk
+                melanjutkan.
               </AlertDescription>
             </Alert>
           </div>
@@ -252,11 +262,21 @@ export default function AhliWarisForm({ form }: Props) {
   ===================================================== */
 
   // Hitung jumlah berdasarkan kondisi saat ini
-  const istriList = ahliWaris.filter((item: DataKeluargaType) => item.hubungan === "ISTRI");
-  const suamiList = ahliWaris.filter((item: DataKeluargaType) => item.hubungan === "SUAMI");
-  const anakList = ahliWaris.filter((item: DataKeluargaType) => item.hubungan === "ANAK");
-  const saudaraList = ahliWaris.filter((item: DataKeluargaType) => item.hubungan === "SAUDARA");
-  const cucuList = ahliWaris.filter((item: DataKeluargaType) => item.hubungan === "CUCU");
+  const istriList = ahliWaris.filter(
+    (item: DataKeluargaType) => item.hubungan === "ISTRI",
+  );
+  const suamiList = ahliWaris.filter(
+    (item: DataKeluargaType) => item.hubungan === "SUAMI",
+  );
+  const anakList = ahliWaris.filter(
+    (item: DataKeluargaType) => item.hubungan === "ANAK",
+  );
+  const saudaraList = ahliWaris.filter(
+    (item: DataKeluargaType) => item.hubungan === "SAUDARA",
+  );
+  const cucuList = ahliWaris.filter(
+    (item: DataKeluargaType) => item.hubungan === "CUCU",
+  );
 
   // Tentukan tombol mana yang harus ditampilkan berdasarkan kondisi
   const showTambahIstri =
@@ -295,7 +315,8 @@ export default function AhliWarisForm({ form }: Props) {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {errors.ahliWaris?.message || "Ada data yang belum lengkap. Harap periksa semua field yang diperlukan."}
+            {errors.ahliWaris?.message ||
+              "Ada data yang belum lengkap. Harap periksa semua field yang diperlukan."}
           </AlertDescription>
         </Alert>
       )}
@@ -355,7 +376,8 @@ export default function AhliWarisForm({ form }: Props) {
           {/* Instruction */}
           <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
             <p className="text-gray-600">
-              <strong>Petunjuk:</strong> Isi semua field yang ada di bawah. Field dengan tanda * wajib diisi.
+              <strong>Petunjuk:</strong> Isi semua field yang ada di bawah.
+              Field dengan tanda * wajib diisi.
             </p>
           </div>
 
@@ -434,18 +456,18 @@ export default function AhliWarisForm({ form }: Props) {
       <div className="space-y-6">
         {/* Istri/Suami */}
         {ahliWaris
-          .filter((item) => item.hubungan === "ISTRI" || item.hubungan === "SUAMI")
+          .filter(
+            (item) => item.hubungan === "ISTRI" || item.hubungan === "SUAMI",
+          )
           .map((item, index) => {
-            const originalIndex = ahliWaris.findIndex(
-              (f) => f === item
-            );
+            const originalIndex = ahliWaris.findIndex((f) => f === item);
             const isIstri = item.hubungan === "ISTRI";
             const fieldErrors = errors.ahliWaris?.[originalIndex];
 
             return (
               <Card
                 key={`${item.hubungan}-${index}-${originalIndex}`}
-                className={`border-l-4 ${isIstri ? 'border-l-blue-500 border-blue-100' : 'border-l-purple-500 border-purple-100'}`}
+                className={`border-l-4 ${isIstri ? "border-l-blue-500 border-blue-100" : "border-l-purple-500 border-purple-100"}`}
               >
                 <CardHeader>
                   <div className="flex justify-between items-center">
@@ -513,7 +535,7 @@ export default function AhliWarisForm({ form }: Props) {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Error summary untuk field ini */}
                   {fieldErrors && (
                     <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -559,13 +581,14 @@ export default function AhliWarisForm({ form }: Props) {
             <CardContent>
               <div className="space-y-6">
                 {anakList.map((item, index) => {
-                  const originalIndex = ahliWaris.findIndex(
-                    (f) => f === item
-                  );
+                  const originalIndex = ahliWaris.findIndex((f) => f === item);
                   const fieldErrors = errors.ahliWaris?.[originalIndex];
 
                   return (
-                    <div key={`anak-${index}-${originalIndex}`} className="border rounded-lg p-4 bg-white">
+                    <div
+                      key={`anak-${index}-${originalIndex}`}
+                      className="border rounded-lg p-4 bg-white"
+                    >
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h4 className="font-medium">
@@ -629,13 +652,14 @@ export default function AhliWarisForm({ form }: Props) {
             <CardContent>
               <div className="space-y-6">
                 {saudaraList.map((item, index) => {
-                  const originalIndex = ahliWaris.findIndex(
-                    (f) => f === item
-                  );
+                  const originalIndex = ahliWaris.findIndex((f) => f === item);
                   const fieldErrors = errors.ahliWaris?.[originalIndex];
 
                   return (
-                    <div key={`saudara-${index}-${originalIndex}`} className="border rounded-lg p-4 bg-white">
+                    <div
+                      key={`saudara-${index}-${originalIndex}`}
+                      className="border rounded-lg p-4 bg-white"
+                    >
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h4 className="font-medium">Saudara {index + 1}</h4>
@@ -698,13 +722,14 @@ export default function AhliWarisForm({ form }: Props) {
             <CardContent>
               <div className="space-y-6">
                 {cucuList.map((item, index) => {
-                  const originalIndex = ahliWaris.findIndex(
-                    (f) => f === item
-                  );
+                  const originalIndex = ahliWaris.findIndex((f) => f === item);
                   const fieldErrors = errors.ahliWaris?.[originalIndex];
 
                   return (
-                    <div key={`cucu-${index}-${originalIndex}`} className="border rounded-lg p-4 bg-white">
+                    <div
+                      key={`cucu-${index}-${originalIndex}`}
+                      className="border rounded-lg p-4 bg-white"
+                    >
                       <div className="flex justify-between items-center mb-4">
                         <div>
                           <h4 className="font-medium">Cucu {index + 1}</h4>
@@ -740,11 +765,12 @@ export default function AhliWarisForm({ form }: Props) {
         )}
 
         {/* Empty state jika belum ada ahli waris (kecuali kondisi 6) */}
-        {ahliWaris.length === 0  && (
+        {ahliWaris.length === 0 && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Belum ada ahli waris yang ditambahkan. Klik tombol Tambah Istri/Suami di atas untuk memulai.
+              Belum ada ahli waris yang ditambahkan. Klik tombol Tambah
+              Istri/Suami di atas untuk memulai.
             </AlertDescription>
           </Alert>
         )}
@@ -755,10 +781,15 @@ export default function AhliWarisForm({ form }: Props) {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-1">
-                <p><strong>Ada beberapa field yang perlu diperbaiki:</strong></p>
+                <p>
+                  <strong>Ada beberapa field yang perlu diperbaiki:</strong>
+                </p>
                 <ul className="list-disc pl-4 space-y-1">
                   {errors.dataPewaris && (
-                    <li>Data Pewaris: {errors.dataPewaris.message || "Periksa data pewaris"}</li>
+                    <li>
+                      Data Pewaris:{" "}
+                      {errors.dataPewaris.message || "Periksa data pewaris"}
+                    </li>
                   )}
                   {errors.ahliWaris?.message && (
                     <li>Ahli Waris: {errors.ahliWaris.message}</li>
