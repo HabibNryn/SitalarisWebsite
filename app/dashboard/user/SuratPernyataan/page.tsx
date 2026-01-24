@@ -61,20 +61,16 @@ export default function FormPernyataanWarisan() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
-        console.log("Response status:", response.status);
+
+        const text = await response.text();
+        const result = text ? JSON.parse(text) : null;
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Error response dari server:", errorData);
-          throw new Error(
-            `HTTP ${response.status}: ${JSON.stringify(errorData)}`,
-          );
+          console.error("Error response dari server:", result);
+          throw new Error(`HTTP ${response.status}: ${JSON.stringify(result)}`);
         }
-        const result = await response.json();
-        console.log("Success response:", result);
 
-        const savedData = await response.json();
-        console.log("Data saved to database:", savedData);
+        console.log("Data saved to database:", result);
       } catch (dbError) {
         console.warn(
           "Database save failed, continuing with local save:",
