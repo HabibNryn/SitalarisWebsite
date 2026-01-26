@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                  String                @id @default(cuid())
   name                String?
-  email               String?               @unique
+  email               String               @unique
   password            String?
   emailVerified       DateTime?
   role                UserRole              @default(user)
@@ -138,6 +138,7 @@ model SuratPernyataan {
   tanggalNikah         DateTime?
   instansiNikah        String?
   ahliWaris            Json
+  dataPewaris          Json
   jumlahAnak           Int                  @default(0)
   jumlahIstri          Int                  @default(0)
   jumlahSaudara        Int                  @default(0)
@@ -150,6 +151,17 @@ model SuratPernyataan {
   downloadCount        Int                  @default(0)
   pdfFileName          String?
   pdfFileSize          Int?
+  reviewNotes         String?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  printCount          Int                  @default(0)
+  lastPrinted         DateTime?
+  pdfUrl               String?
+  pdfStoragePath      String?
+  pdfMimeType         String?
+  pdfChecksum         String?
+  pdfVersion          Int                  @default(0)
+  pdfGeneratedBy      String?
   pdfLastGenerated     DateTime?
   userId               String
   createdAt            DateTime             @default(now())

@@ -1,3 +1,5 @@
+import { DataPewaris } from "@/types/pernyataanWaris";
+
 export const defaultAhliWaris = {
   nama: "",
   namaAyah: "",
@@ -25,7 +27,13 @@ export const defaultDataPewaris = {
   alamat: "",
   statusPernikahan: "MENIKAH" as const,
   jenisKelamin: "LAKI-LAKI" as const,
-};
+  rtPewaris: "",
+  rwPewaris: "",
+  namaAyah: "",
+  noSuratNikah: "",
+  tanggalNikah: "",
+  instansiNikah: "",
+} as const satisfies DataPewaris;
 
 // Template untuk istri dengan identifier
 export const templateIstri = (istriNumber: number = 1) => ({

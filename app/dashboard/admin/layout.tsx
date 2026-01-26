@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   BarChart3,
@@ -25,6 +25,7 @@ export default function AdminLayout({
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const UsePathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -32,7 +33,7 @@ export default function AdminLayout({
      Auth & Role Guard
   ────────────────────────────── */
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role !== "ADMIN") {
+    if (status === "authenticated" && session?.user?.role !== "admin") {
       router.replace("/dashboard");
     }
   }, [status, session, router]);
@@ -48,7 +49,7 @@ export default function AdminLayout({
     );
   }
 
-  if (status === "authenticated" && session?.user?.role !== "ADMIN") {
+  if (status === "authenticated" && session?.user?.role !== "admin") {
     return null;
   }
 
@@ -60,22 +61,25 @@ export default function AdminLayout({
       title: "Dashboard",
       icon: <BarChart3 className="w-5 h-5" />,
       href: "/dashboard/admin",
-      active: true,
+      isActive: UsePathname === "/dashboard/admin" || UsePathname === "/dashboard/admin/",
     },
     {
       title: "Surat Pernyataan",
       icon: <FileText className="w-5 h-5" />,
       href: "/dashboard/admin/submissions",
+      isActive: UsePathname.startsWith("/dashboard/admin/submissions"),
     },
     {
       title: "Pengguna",
       icon: <Users className="w-5 h-5" />,
       href: "/dashboard/admin/users",
+      isActive: UsePathname.startsWith("/dashboard/admin/users"),
     },
     {
       title: "Pengaturan",
       icon: <Settings className="w-5 h-5" />,
       href: "/dashboard/admin/settings",
+      isActive: UsePathname.startsWith("/dashboard/admin/settings"),
     },
   ];
 
@@ -138,7 +142,7 @@ export default function AdminLayout({
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                       "text-gray-700 hover:bg-blue-50 hover:text-blue-600",
                       collapsed && "justify-center px-2",
-                      item.active && "bg-blue-50 text-blue-600"
+                      item.isActive && "bg-blue-50 text-blue-600"
                     )}
                   >
                     <div className="flex-shrink-0">{item.icon}</div>

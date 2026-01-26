@@ -29,6 +29,12 @@ export interface DataPewaris {
   alamat: string;
   statusPernikahan: StatusPernikahan;
   jenisKelamin: JenisKelamin;
+  rtPewaris: string;
+  rwPewaris: string;
+  namaAyah: string;
+  noSuratNikah: string;
+  tanggalNikah: string;
+  instansiNikah: string;
 }
 
 export interface FormDataPernyataan {

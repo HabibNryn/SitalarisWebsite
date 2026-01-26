@@ -8,46 +8,38 @@ export default withAuth(
     const pathname = req.nextUrl.pathname;
 
     // ======================
-    // ADMIN DASHBOARD
+    // NOT AUTHENTICATED
+    // ======================
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    const isAdmin = token.isAdmin === true;
+
+    // ======================
+    // ADMIN AREA
     // ======================
     if (pathname.startsWith("/dashboard/admin")) {
-      const isAdmin =
-        token?.isAdmin === true ||
-        token?.role === "ADMIN" ||
-        token?.role === "SUPER_ADMIN";
-
       if (!isAdmin) {
-        return NextResponse.redirect(
-          new URL("/dashboard/user", req.url),
-        );
+        return NextResponse.redirect(new URL("/dashboard/user", req.url));
       }
     }
 
     // ======================
-    // USER DASHBOARD
+    // USER AREA
     // ======================
     if (pathname.startsWith("/dashboard/user")) {
-      if (!token) {
-        return NextResponse.redirect(
-          new URL("/login", req.url),
-        );
+      if (isAdmin) {
+        return NextResponse.redirect(new URL("/dashboard/admin", req.url));
       }
     }
 
     // ======================
-    // ROOT DASHBOARD REDIRECT
+    // ROOT DASHBOARD
     // ======================
-    if (pathname === "/dashboard" && token) {
-      const isAdmin =
-        token.isAdmin === true ||
-        token.role === "ADMIN" ||
-        token.role === "SUPER_ADMIN";
-
+    if (pathname === "/dashboard") {
       return NextResponse.redirect(
-        new URL(
-          isAdmin ? "/dashboard/admin" : "/dashboard/user",
-          req.url,
-        ),
+        new URL(isAdmin ? "/dashboard/admin" : "/dashboard/user", req.url),
       );
     }
 
@@ -55,25 +47,9 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ req }) => {
-        const pathname = req.nextUrl.pathname;
-
-        // PUBLIC ROUTES
-        if (
-          pathname === "/" ||
-          pathname.startsWith("/login") ||
-          pathname.startsWith("/register") ||
-          pathname.startsWith("/api/auth")
-        ) {
-          return true;
-        }
-
-        // PROTECTED ROUTES
-        if (pathname.startsWith("/dashboard")) {
-          return true;
-        }
-
-        return true;
+      authorized: ({ token }) => {
+        // HARD GUARD
+        return !!token;
       },
     },
   },

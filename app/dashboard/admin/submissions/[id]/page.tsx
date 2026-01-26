@@ -17,6 +17,19 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
+interface AhliWaris {
+  hubungan: string;
+  masihHidup: boolean;
+  nama: string;
+  namaAyah: string | null;
+  tempatLahir: string;
+  tanggalLahir: string;
+  nik: string | null;
+  pekerjaan: string | null;
+  agama: string | null;
+  alamat: string | null;
+}
+
 interface SubmissionDetail {
   id: string;
   nomorSurat: string;
@@ -32,7 +45,7 @@ interface SubmissionDetail {
     nomorAkteKematian: string | null;
     jenisKelamin: string;
   };
-  ahliWaris: any[];
+  ahliWaris: AhliWaris[];
   tambahanKeterangan: string;
   status: string;
   createdAt: string;
