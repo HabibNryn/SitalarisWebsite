@@ -157,9 +157,6 @@ model SuratPernyataan {
   printCount          Int                  @default(0)
   lastPrinted         DateTime?
   pdfUrl               String?
-  pdfStoragePath      String?
-  pdfMimeType         String?
-  pdfChecksum         String?
   pdfVersion          Int                  @default(0)
   pdfGeneratedBy      String?
   pdfLastGenerated     DateTime?
