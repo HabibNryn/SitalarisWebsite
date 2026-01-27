@@ -1,4 +1,3 @@
-// app/dashboard/SuratPernyataan/components/DataPewarisForm.tsx
 "use client";
 
 import {
@@ -46,11 +45,17 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
       { value: "BELUM_MENIKAH", label: "Belum Menikah" },
       { value: "CERAI_HIDUP", label: "Cerai Hidup" },
       { value: "CERAI_MATI", label: "Cerai Mati" },
+      { value: "JANDA", label: "Janda" }, // ✅ DITAMBAH
+      { value: "DUDA", label: "Duda" }, // ✅ DITAMBAH
     ];
 
     // Jika kondisi membutuhkan pasangan hidup, batasi pilihan
     if (perluPasanganHidup()) {
-      return options.filter(opt => opt.value === "MENIKAH");
+      return options.filter(opt => 
+        opt.value === "MENIKAH" || 
+        opt.value === "JANDA" || 
+        opt.value === "DUDA"
+      );
     }
 
     return options;
@@ -90,7 +95,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
               </p>
               {perluPasanganHidup() && (
                 <p className="text-xs text-blue-600 mt-1">
-                  • Status pernikahan harus Menikah untuk kondisi ini
+                  • Status pernikahan harus Menikah/Janda/Duda untuk kondisi ini
                 </p>
               )}
               {kondisi === "kondisi5" && jenisKelamin !== "PEREMPUAN" && (
@@ -147,7 +152,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium text-gray-700 flex items-center">
-                Nama Ayah Pewaris (untuk BIN)
+                Nama Ayah Pewaris (untuk BIN/BINTI)
                 <span className="text-red-500 ml-1">*</span>
               </FormLabel>
               <FormControl>
@@ -162,6 +167,35 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
               <FormDescription className="text-xs text-gray-500">
                 Contoh: Untuk Muhammad bin Abdullah, isi Abdullah
               </FormDescription>
+            </FormItem>
+          )}
+        />
+
+        {/* Jenis Kelamin - WAJIB */}
+        <FormField
+          control={form.control}
+          name="dataPewaris.jenisKelamin"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-700 flex items-center">
+                Jenis Kelamin Pewaris
+                <span className="text-red-500 ml-1">*</span>
+              </FormLabel>
+              <FormControl>
+                <select
+                  value={field.value || "LAKI-LAKI"}
+                  onChange={field.onChange}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors?.jenisKelamin 
+                      ? "border-red-300 focus:ring-red-500" 
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
+                >
+                  <option value="LAKI-LAKI">Laki-laki</option>
+                  <option value="PEREMPUAN">Perempuan</option>
+                </select>
+              </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -212,35 +246,6 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
           )}
         />
 
-        {/* Jenis Kelamin - WAJIB */}
-        <FormField
-          control={form.control}
-          name="dataPewaris.jenisKelamin"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm font-medium text-gray-700 flex items-center">
-                Jenis Kelamin
-                <span className="text-red-500 ml-1">*</span>
-              </FormLabel>
-              <FormControl>
-                <select
-                  value={field.value || "LAKI-LAKI"}
-                  onChange={field.onChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    errors?.jenisKelamin 
-                      ? "border-red-300 focus:ring-red-500" 
-                      : "border-gray-300 focus:ring-blue-500"
-                  }`}
-                >
-                  <option value="LAKI-LAKI">Laki-laki</option>
-                  <option value="PEREMPUAN">Perempuan</option>
-                </select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         {/* Status Pernikahan - WAJIB */}
         <FormField
           control={form.control}
@@ -269,11 +274,45 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
                 </select>
               </FormControl>
               <FormMessage />
-              {perluPasanganHidup() && field.value !== "MENIKAH" && (
+              {perluPasanganHidup() && 
+                !["MENIKAH", "JANDA", "DUDA"].includes(field.value) && (
                 <FormDescription className="text-red-500 text-xs">
-                  • Status harus Menikah untuk kondisi yang dipilih
+                  • Status harus Menikah/Janda/Duda untuk kondisi yang dipilih
                 </FormDescription>
               )}
+            </FormItem>
+          )}
+        />
+
+        {/* Agama - WAJIB */}
+        <FormField
+          control={form.control}
+          name="dataPewaris.agama"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-700 flex items-center">
+                Agama
+                <span className="text-red-500 ml-1">*</span>
+              </FormLabel>
+              <FormControl>
+                <select
+                  value={field.value || "Islam"}
+                  onChange={field.onChange}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors?.agama 
+                      ? "border-red-300 focus:ring-red-500" 
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
+                >
+                  <option value="Islam">Islam</option>
+                  <option value="Kristen">Kristen</option>
+                  <option value="Katolik">Katolik</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Buddha">Buddha</option>
+                  <option value="Konghucu">Konghucu</option>
+                </select>
+              </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -294,7 +333,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Tempat meninggal (RS/Rumah/dll)"
+                      placeholder="Kota Tempat Meninggal (Jakarta, Bandung, dsb.)"
                       value={field.value || ""}
                       onChange={field.onChange}
                       className={errors?.tempatMeninggal ? "border-red-300 focus:ring-red-500" : ""}
@@ -376,9 +415,9 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
           </div>
         </div>
 
-        {/* Alamat - WAJIB */}
+        {/* Alamat Lengkap */}
         <div className="md:col-span-2">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Alamat</h3>
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Alamat Lengkap</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
@@ -386,7 +425,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <FormLabel className="text-sm font-medium text-gray-700 flex items-center">
-                    Alamat Lengkap
+                    Alamat Jalan
                     <span className="text-red-500 ml-1">*</span>
                   </FormLabel>
                   <FormControl>
@@ -394,7 +433,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
                       value={field.value || ""}
                       onChange={field.onChange}
                       rows={3}
-                      placeholder="Alamat lengkap (jalan, nomor, RT/RW)"
+                      placeholder="Alamat lengkap (jalan, nomor)"
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                         errors?.alamat 
                           ? "border-red-300 focus:ring-red-500" 
@@ -449,8 +488,8 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
           </div>
         </div>
 
-        {/* Data Pernikahan (jika MENIKAH) */}
-        {statusPernikahan === "MENIKAH" && (
+        {/* Data Pernikahan (jika MENIKAH/JANDA/DUDA) */}
+        {["MENIKAH", "JANDA", "DUDA"].includes(statusPernikahan) && (
           <div className="md:col-span-2 border-t pt-4 mt-2">
             <h3 className="text-base font-semibold text-gray-900 mb-4">Data Pernikahan</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -496,15 +535,15 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
 
               <FormField
                 control={form.control}
-                name="dataPewaris.kuaNikah"
+                name="dataPewaris.instansiNikah"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      KUA/Dukcapil
+                      Instansi Nikah
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Nama KUA/Dukcapil"
+                        placeholder="KUA/Dukcapil"
                         value={field.value || ""}
                         onChange={field.onChange}
                       />
@@ -517,20 +556,6 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
           </div>
         )}
       </div>
-
-      {/* Informasi tambahan berdasarkan kondisi */}
-      {kondisi && (
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Info:</strong> {getKondisiLabel(kondisi)}
-          </p>
-          {perluPasanganHidup() && statusPernikahan === "MENIKAH" && (
-            <p className="text-xs text-blue-600 mt-1">
-              • Pada langkah berikutnya, sistem akan menambahkan {jenisKelamin === "LAKI-LAKI" ? "istri" : "suami"} untuk kondisi ini
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Validation Summary */}
       {errors && Object.keys(errors).length > 0 && (
@@ -563,9 +588,13 @@ function getFieldLabel(fieldName: string): string {
     tanggalMeninggal: "Tanggal Meninggal",
     nomorAkteKematian: "Nomor Akta Kematian",
     tanggalAkteKematian: "Tanggal Akta Kematian",
+    instansiAkteKematian: "Instansi Akta Kematian",
     alamat: "Alamat",
     jenisKelamin: "Jenis Kelamin",
     statusPernikahan: "Status Pernikahan",
+    agama: "Agama",
+    pekerjaan: "Pekerjaan",
+    kewarganegaraan: "Kewarganegaraan",
   };
   return labels[fieldName] || fieldName;
 }

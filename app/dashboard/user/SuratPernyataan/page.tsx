@@ -31,7 +31,7 @@ export default function FormPernyataanWarisan() {
       ahliWaris: [],
       tambahanKeterangan: "",
     },
-    mode: "onChange", // Tambahkan mode untuk validasi real-time
+    mode: "onChange", 
   });
 
   const kondisi = form.watch("kondisi");
@@ -129,28 +129,7 @@ export default function FormPernyataanWarisan() {
 
             {/* Step 3: Data Ahli Waris - tidak muncul untuk kondisi 6 */}
             {kondisi && kondisi !== "kondisi6" && (
-              <AhliWarisForm
-                form={form}
-                jumlahAnak={
-                  formValues.ahliWaris?.filter(
-                    (item) => item?.hubungan === "ANAK",
-                  ).length || 0
-                }
-                jumlahCucu={
-                  formValues.ahliWaris?.filter(
-                    (item) => item?.hubungan === "CUCU",
-                  ).length || 0
-                }
-                jumlahSaudara={
-                  formValues.ahliWaris?.filter(
-                    (item) => item?.hubungan === "SAUDARA",
-                  ).length || 0
-                }
-                anakPerIstri={[0, 0]} // Ini perlu disesuaikan dengan logika Anda
-                setJumlahAnak={() => {}} // Tambahkan fungsi-fungsi ini
-                setJumlahCucu={() => {}}
-                setJumlahSaudara={() => {}}
-              />
+              <AhliWarisForm form={form} />
             )}
 
             {/* Status Messages */}

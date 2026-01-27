@@ -88,7 +88,7 @@ export const dataPewarisSchema = z.object({
   // ==== DATA PERNIKAHAN - OPSIONAL (untuk yang sudah menikah) ====
   noSuratNikah: z.string().optional(),
   tanggalNikah: z.string().optional(),
-  kuaNikah: z.string().optional(),
+  instansiNikah: z.string().optional(),
 
   // ==== INFORMASI TAMBAHAN - OPSIONAL ====
   pekerjaan: z.string().optional(),
@@ -96,6 +96,9 @@ export const dataPewarisSchema = z.object({
   nik: z.string().optional(),
   rt: z.string().optional(),
   rw: z.string().optional(),
+  jumlahAnak: z.number().optional(),
+  jumlahCucu: z.number().optional(),
+  jumlahSaudara: z.number().optional(),
 });
 
 /* =======================
@@ -285,7 +288,7 @@ export const defaultDataPewaris: DataPewarisType = {
   // Data Pernikahan - OPSIONAL
   noSuratNikah: "",
   tanggalNikah: "",
-  kuaNikah: "",
+  instansiNikah: "",
 
   // Informasi Tambahan - OPSIONAL
   pekerjaan: "",

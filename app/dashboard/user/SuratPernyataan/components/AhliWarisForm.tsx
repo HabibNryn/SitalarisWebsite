@@ -1,4 +1,3 @@
-// app/dashboard/SuratPernyataan/components/AhliWarisForm.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -17,22 +16,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getKondisiLabel } from "../constants/schemas";
+import { StatusPernikahan } from "@/types/pernyataanWaris";
 
 interface Props {
   form: UseFormReturn<FormValues>;
-  jumlahAnak?: number;
-  jumlahCucu?: number;
-  jumlahSaudara?: number;
-  anakPerIstri?: number[];
-  setJumlahAnak?: () => void;
-  setJumlahCucu?: () => void;
-  setJumlahSaudara?: () => void;
 }
 
 export default function AhliWarisForm({ form }: Props) {
   const kondisi = form.watch("kondisi");
   const dataPewaris = form.watch("dataPewaris");
   const ahliWaris = form.watch("ahliWaris") || [];
+  
 
   const { append, remove, replace } = useFieldArray({
     control: form.control,
@@ -43,7 +37,7 @@ export default function AhliWarisForm({ form }: Props) {
   const errors = form.formState.errors;
 
   /* =====================================================
-     USE EFFECT UNTUK SEED DATA AWAL
+     USE EFFECT UNTUK SEED DATA AWAL - DIUPDATE
   ===================================================== */
   useEffect(() => {
     if (!kondisi || ahliWaris.length > 0) return;
@@ -136,9 +130,14 @@ export default function AhliWarisForm({ form }: Props) {
   }, [kondisi, ahliWaris.length, replace, dataPewaris?.jenisKelamin]);
 
   /* =====================================================
-     FUNGSI TAMBAH DATA
+     FUNGSI TAMBAH DATA - DIUPDATE
   ===================================================== */
-  const tambahAnak = (istriKe: number = 1) => {
+  const tambahData = (
+    hubungan: DataKeluargaType["hubungan"],
+    keterangan: string,
+    jenisKelamin: "LAKI-LAKI" | "PEREMPUAN" = "LAKI-LAKI",
+    statusPernikahan: StatusPernikahan = "BELUM_MENIKAH",
+  ) => {
     append({
       nama: "",
       namaAyah: "",
@@ -148,51 +147,30 @@ export default function AhliWarisForm({ form }: Props) {
       nik: "",
       pekerjaan: "",
       agama: "",
-      jenisKelamin: "LAKI-LAKI",
-      statusPernikahan: "BELUM_MENIKAH",
-      hubungan: "ANAK",
+      jenisKelamin,
+      statusPernikahan,
+      hubungan,
       masihHidup: true,
       memilikiKeturunan: false,
-      keterangan: `Anak dari ${istriKe === 1 ? "Istri Pertama" : "Istri Kedua"}`,
+      keterangan,
     });
+  };
+
+  const tambahAnak = (istriKe: number = 1) => {
+    tambahData(
+      "ANAK",
+      `Anak dari ${istriKe === 1 ? "Istri Pertama" : "Istri Kedua"}`,
+      "LAKI-LAKI",
+      "BELUM_MENIKAH",
+    );
   };
 
   const tambahSaudara = () => {
-    append({
-      nama: "",
-      namaAyah: "",
-      tempatLahir: "",
-      tanggalLahir: "",
-      alamat: "",
-      nik: "",
-      pekerjaan: "",
-      agama: "",
-      jenisKelamin: "LAKI-LAKI",
-      statusPernikahan: "BELUM_MENIKAH",
-      hubungan: "SAUDARA",
-      masihHidup: true,
-      memilikiKeturunan: false,
-      keterangan: "Saudara Kandung",
-    });
+    tambahData("SAUDARA", "Saudara Kandung");
   };
 
   const tambahCucu = () => {
-    append({
-      nama: "",
-      namaAyah: "",
-      tempatLahir: "",
-      tanggalLahir: "",
-      alamat: "",
-      nik: "",
-      pekerjaan: "",
-      agama: "",
-      jenisKelamin: "LAKI-LAKI",
-      statusPernikahan: "BELUM_MENIKAH",
-      hubungan: "CUCU",
-      masihHidup: true,
-      memilikiKeturunan: false,
-      keterangan: "Cucu Pewaris",
-    });
+    tambahData("CUCU", "Cucu Pewaris");
   };
 
   const tambahIstri = () => {
@@ -201,61 +179,10 @@ export default function AhliWarisForm({ form }: Props) {
         ahliWaris.filter((a: DataKeluargaType) => a.hubungan === "ISTRI")
           .length + 1;
       if (istriCount <= 2) {
-        append({
-          nama: "",
-          namaAyah: "",
-          tempatLahir: "",
-          tanggalLahir: "",
-          alamat: "",
-          nik: "",
-          pekerjaan: "",
-          agama: "",
-          jenisKelamin: "PEREMPUAN",
-          statusPernikahan: "MENIKAH",
-          hubungan: "ISTRI",
-          masihHidup: true,
-          memilikiKeturunan: false,
-          keterangan: `Istri ${istriCount}`,
-        });
+        tambahData("ISTRI", `Istri ${istriCount}`, "PEREMPUAN", "MENIKAH");
       }
     }
   };
-
-  /* =====================================================
-     KONDISI KHUSUS - KONDISI 6
-  ===================================================== */
-  if (kondisi === "kondisi6") {
-    return (
-      <Card className="border-yellow-200 bg-yellow-50">
-        <CardHeader>
-          <CardTitle className="flex items-center text-yellow-800">
-            <Users className="w-5 h-5 mr-2" />
-            Tidak Ada Ahli Waris Langsung
-          </CardTitle>
-          <CardDescription className="text-yellow-700">
-            Pewaris tidak memiliki keturunan langsung.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Untuk kondisi ini, tidak perlu menambahkan istri, suami, anak,
-              atau cucu.
-            </p>
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Lanjutkan ke pengisian data pewaris dan klik Simpan Data untuk
-                melanjutkan.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!kondisi) return null;
 
   /* =====================================================
      LOGIKA TOMBOL TAMBAH BERDASARKAN KONDISI
@@ -298,7 +225,7 @@ export default function AhliWarisForm({ form }: Props) {
   ].includes(kondisi);
 
   const showTambahSaudara = kondisi === "kondisi7";
-  const showTambahCucu = kondisi === "kondisi3"; // Hanya kondisi 3 yang butuh cucu
+  const showTambahCucu = kondisi === "kondisi3";
 
   /* =====================================================
      VALIDATION WARNING

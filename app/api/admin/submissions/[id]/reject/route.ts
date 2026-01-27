@@ -7,17 +7,18 @@ import { sendRejectionEmail } from "@/lib/email";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
+    
 
     if (session?.user?.role !== "admin" && !session?.user?.isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { reason } = await request.json();
-    const submissionId = params.id;
+    const { id: submissionId } = await params;
 
     // Get submission with user data
     const submission = await prisma.suratPernyataan.findUnique({

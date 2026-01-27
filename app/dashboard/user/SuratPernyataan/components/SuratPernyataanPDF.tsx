@@ -481,7 +481,7 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
             <Text style={styles.bold}>
               {formatDate(pewaris.tanggalMeninggal)}
             </Text>{" "}
-            sesuai dengan Akte Kematian dari Dinas Dukcapil Provinsi DKI Jakarta
+            sesuai dengan Akte Kematian dari {pewaris.instansiNikah || "__________" } Provinsi DKI Jakarta
             Nomor{" "}
             <Text style={styles.bold}>
               {formatAkteKematian(pewaris.nomorAkteKematian)}
@@ -529,8 +529,8 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
             </Text>{" "}
             tanggal{" "}
             <Text style={styles.bold}>{formatDate(pewaris.tanggalNikah)}</Text>{" "}
-            dari KUA/Dukcapil{" "}
-            <Text style={styles.bold}>{pewaris.kuaNikah || "__________"}</Text>,
+            dari {" "}
+            <Text style={styles.bold}>{pewaris.instansiNikah || "__________"}</Text>,
             dari perkawinannya dikaruniai {anak.length} (tiga) orang yang kini
             masih hidup, yaitu :
           </Text>
@@ -544,50 +544,50 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
               {/* BARIS NAMA (SEJAJAR DENGAN FIELD LAIN) */}
               <View style={styles.formRow}>
                 <Text style={styles.formLabel}>
-                  {index + 1}. Nama :
+                  {index + 1}. Nama 
                 </Text>
                 <Text style={styles.formValue}>
-                  {anakItem.nama || "__________"} (Anak)
+                  : {anakItem.nama || "__________"} (Anak)
                 </Text>
               </View>
 
               {/* TEMPAT / TGL LAHIR */}
               <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Tempat Tgl. Lahir :</Text>
+                <Text style={styles.formLabel}>Tempat Tgl. Lahir </Text>
                 <Text style={styles.formValue}>
-                  {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}
+                  : {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}
                 </Text>
               </View>
 
               {/* PEKERJAAN */}
               <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Pekerjaan :</Text>
+                <Text style={styles.formLabel}>Pekerjaan </Text>
                 <Text style={styles.formValue}>
-                  {anakItem.pekerjaan || "__________"}
+                  : {anakItem.pekerjaan || "__________"}
                 </Text>
               </View>
 
               {/* AGAMA */}
               <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Agama :</Text>
+                <Text style={styles.formLabel}>Agama </Text>
                 <Text style={styles.formValue}>
-                  {anakItem.agama || "__________"}
+                  : {anakItem.agama || "__________"}
                 </Text>
               </View>
 
               {/* ALAMAT */}
               <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Alamat :</Text>
+                <Text style={styles.formLabel}>Alamat </Text>
                 <Text style={styles.formValue}>
-                  {formatAlamat(anakItem.alamat)}
+                  : {formatAlamat(anakItem.alamat)}
                 </Text>
               </View>
 
               {/* NIK */}
               <View style={styles.formRow}>
-                <Text style={styles.formLabel}>No. KTP :</Text>
+                <Text style={styles.formLabel}>No. KTP </Text>
                 <Text style={styles.formValue}>
-                  {anakItem.nik || "__________"}
+                  : {anakItem.nik || "__________"}
                 </Text>
               </View>
 

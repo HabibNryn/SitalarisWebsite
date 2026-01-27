@@ -33,12 +33,13 @@ function parsePrismaJson<T>(
 ========================= */
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     /* =========================
        AUTHORIZATION
     ========================= */
+
     const session = await getServerSession(authOptions);
 
     if (!session?.user || session.user.role !== "admin") {
@@ -48,11 +49,13 @@ export async function POST(
       );
     }
 
+    const { id: submissionId } = await params
+
     /* =========================
        FETCH SUBMISSION
     ========================= */
     const submission = await prisma.suratPernyataan.findUnique({
-      where: { id: params.id },
+      where: { id: submissionId },
       include: {
         user: {
           select: {
