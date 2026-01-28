@@ -36,6 +36,20 @@ export async function generateSuratPernyataanPDF(
     y -= size + 4;
   };
 
+  function formatDate(dateString?: string): string {
+  if (!dateString) return "__________";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "__________";
+
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+
   // Add new page if needed
   const checkNewPage = () => {
     if (y < 100) {
