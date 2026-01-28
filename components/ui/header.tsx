@@ -110,7 +110,7 @@ export default function Header({
             <div className="hidden sm:block">
               <h1 className="font-bold text-xl text-gray-800">SITALARIS</h1>
               <p className="text-xs text-gray-500">
-                {user.role === "ADMIN" || user.role === "SUPER_ADMIN"
+                {user.role === "admin" || user.role === "super_admin"
                   ? "Admin Dashboard"
                   : "User Dashboard"}
               </p>
@@ -155,7 +155,7 @@ export default function Header({
                   <span className="text-xs text-gray-500 capitalize">
                     {user.role?.toLowerCase().replace("_", " ")}
                   </span>
-                  {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                  {(user.role === "admin" || user.role === "super_admin") && (
                     <Shield className="w-3 h-3 text-blue-500" />
                   )}
                 </div>
@@ -186,9 +186,9 @@ export default function Header({
                   <div className="mt-2">
                     <span
                       className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                        user.role === "SUPER_ADMIN"
+                        user.role === "super_admin"
                           ? "bg-purple-100 text-purple-800"
-                          : user.role === "ADMIN"
+                          : user.role === "admin"
                           ? "bg-blue-100 text-blue-800"
                           : "bg-green-100 text-green-800"
                       }`}
@@ -225,7 +225,7 @@ export default function Header({
                     Pengaturan
                   </button>
 
-                  {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                  {(user.role === "admin" || user.role === "super_admin") && (
                     <button
                       onClick={handleAdminClick}
                       className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

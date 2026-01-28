@@ -4,7 +4,6 @@
 import { useState } from "react";
 import Header from "@/components/ui/header";
 import Sidebar from "@/components/ui/sidebar";
-import ProfileForm from "@/components/forms/ProfileForm";
 
 export default function DashboardClientWrapper() {
   const [collapsed, setCollapsed] = useState(false);
