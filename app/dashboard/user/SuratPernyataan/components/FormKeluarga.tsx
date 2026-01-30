@@ -9,6 +9,7 @@ import Input from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../types";
 import { formatDateForInput } from "../utils/formatters";
+import { useEffect } from "react";
 
 interface FormKeluargaProps {
   form: UseFormReturn<FormValues>;
@@ -50,7 +51,7 @@ export default function FormKeluarga({
               <FormControl>
                 <Input
                   placeholder="Nama lengkap"
-                  value={field.value || ""}
+                  value={field.value ?? ""}
                   onChange={field.onChange}
                 />
               </FormControl>
@@ -110,7 +111,7 @@ export default function FormKeluarga({
               <FormControl>
                 <Input
                   placeholder="Kota tempat lahir"
-                  value={field.value || ""}
+                  value={field.value ?? ""}
                   onChange={field.onChange}
                 />
               </FormControl>
@@ -153,7 +154,7 @@ export default function FormKeluarga({
               <FormControl>
                 <Input
                   placeholder="Pekerjaan saat ini"
-                  value={field.value || ""}
+                  value={field.value ?? ""}
                   onChange={field.onChange}
                 />
               </FormControl>
@@ -173,7 +174,7 @@ export default function FormKeluarga({
               <FormControl>
                 <Input
                   placeholder="Agama"
-                  value={field.value || ""}
+                  value={field.value ?? ""}
                   onChange={field.onChange}
                 />
               </FormControl>
@@ -192,12 +193,13 @@ export default function FormKeluarga({
               </FormLabel>
               <FormControl>
                 <select
-                  value={field.value || "LAKI-LAKI"}
+                  value={field.value ?? ""}
                   onChange={field.onChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="LAKI-LAKI">Laki-laki</option>
                   <option value="PEREMPUAN">Perempuan</option>
+                  <option value="" disabled>-- Pilih Jenis Kelamin --</option>
                 </select>
               </FormControl>
               <FormMessage />

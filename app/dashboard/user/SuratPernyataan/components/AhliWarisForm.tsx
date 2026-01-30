@@ -55,7 +55,7 @@ export default function AhliWarisForm({ form }: Props) {
       pekerjaan: "",
       agama: "",
       jenisKelamin: "LAKI-LAKI",
-      statusPernikahan: "BELUM_MENIKAH",
+      statusPernikahan: "MENIKAH",
       hubungan,
       masihHidup: true,
       memilikiKeturunan: false,
@@ -128,6 +128,19 @@ export default function AhliWarisForm({ form }: Props) {
         break;
     }
   }, [kondisi, ahliWaris.length, replace, dataPewaris?.jenisKelamin]);
+
+  useEffect(() => {
+  ahliWaris.forEach((item, index) => {
+    if (item.hubungan === "ISTRI" && item.jenisKelamin !== "PEREMPUAN") {
+      form.setValue(`ahliWaris.${index}.jenisKelamin`, "PEREMPUAN");
+    }
+
+    if (item.hubungan === "SUAMI" && item.jenisKelamin !== "LAKI-LAKI") {
+      form.setValue(`ahliWaris.${index}.jenisKelamin`, "LAKI-LAKI");
+    }
+  });
+}, [ahliWaris, form]);
+
 
   /* =====================================================
      FUNGSI TAMBAH DATA - DIUPDATE

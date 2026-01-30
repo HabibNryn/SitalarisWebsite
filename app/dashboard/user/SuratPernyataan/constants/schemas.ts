@@ -43,7 +43,7 @@ export const dataKeluargaSchema = z.object({
   namaAyah: z.string().optional(),
   tempatLahir: z.string().optional(),
   tanggalLahir: z.string().optional(),
-  jenisKelamin: JenisKelaminEnum.optional(),
+  jenisKelamin: JenisKelaminEnum,
   nik: z
     .string()
     .length(16, "NIK harus 16 digit")
@@ -448,7 +448,7 @@ export const kondisiFieldRequirements: Record<
     optionalRelationships: [],
     minSaudara: 1,
     requiresMarried: false,
-    pewarisGender: "LAKI-LAKI", // Bisa laki-laki atau perempuan
+    pewarisGender: "LAKI-LAKI", 
   },
 };
 

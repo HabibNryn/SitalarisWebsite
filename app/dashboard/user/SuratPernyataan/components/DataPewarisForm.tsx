@@ -45,18 +45,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
       { value: "BELUM_MENIKAH", label: "Belum Menikah" },
       { value: "CERAI_HIDUP", label: "Cerai Hidup" },
       { value: "CERAI_MATI", label: "Cerai Mati" },
-      { value: "JANDA", label: "Janda" }, // ✅ DITAMBAH
-      { value: "DUDA", label: "Duda" }, // ✅ DITAMBAH
     ];
-
-    // Jika kondisi membutuhkan pasangan hidup, batasi pilihan
-    if (perluPasanganHidup()) {
-      return options.filter(opt => 
-        opt.value === "MENIKAH" || 
-        opt.value === "JANDA" || 
-        opt.value === "DUDA"
-      );
-    }
 
     return options;
   };
@@ -183,7 +172,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
               </FormLabel>
               <FormControl>
                 <select
-                  value={field.value || "LAKI-LAKI"}
+                  value={field.value ?? ""}
                   onChange={field.onChange}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                     errors?.jenisKelamin 
@@ -489,7 +478,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
         </div>
 
         {/* Data Pernikahan (jika MENIKAH/JANDA/DUDA) */}
-        {["MENIKAH", "JANDA", "DUDA"].includes(statusPernikahan) && (
+        {["MENIKAH", "CERAI_MATI"].includes(statusPernikahan) && (
           <div className="md:col-span-2 border-t pt-4 mt-2">
             <h3 className="text-base font-semibold text-gray-900 mb-4">Data Pernikahan</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -567,7 +556,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
           <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
             {Object.entries(errors).map(([key, error]) => (
               <li key={key}>
-                <span className="font-medium">{getFieldLabel(key)}:</span> {error?.valueOf.arguments || "Wajib diisi"}
+                <span className="font-medium">{getFieldLabel(key)}:</span> {typeof error === "object" && error !== null && "message" in error ? error.message : "Wajib diisi"}
               </li>
             ))}
           </ul>

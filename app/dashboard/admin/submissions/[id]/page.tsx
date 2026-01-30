@@ -37,6 +37,7 @@ interface SubmissionDetail {
   dataPewaris: {
     nama: string;
     namaAyah: string | null;
+    nik: string;
     tempatLahir: string;
     tanggalLahir: string;
     tempatMeninggal: string;
@@ -251,6 +252,12 @@ export default function SubmissionDetailPage() {
                     </p>
                   </div>
                   <div>
+                    <p className="text-sm text-gray-500">NIK</p>
+                    <p className="font-medium">
+                      {submission.dataPewaris.nik || "-"}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-sm text-gray-500">
                       Tempat/Tanggal Lahir
                     </p>
@@ -309,7 +316,7 @@ export default function SubmissionDetailPage() {
                           : ahli.hubungan === "SUAMI"
                             ? "Suami"
                             : ahli.hubungan === "ANAK"
-                              ? `Anak ${index + 1}`
+                              ? `Anak ${index + 0}`
                               : ahli.hubungan === "SAUDARA"
                                 ? "Saudara Kandung"
                                 : ahli.hubungan}
