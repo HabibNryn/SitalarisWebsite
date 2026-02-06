@@ -4,14 +4,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, Clock, FileText, UserCheck, ShieldCheck } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle, Clock, FileText, UserCheck, ShieldCheck } from "lucide-react";
 
 export default function ProgressTrackingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [pengajuanId, setPengajuanId] = useState<string | null>(null);
+  const [rejection, setRejection] = useState<{ reason: string | null; reviewedAt: string | null } | null>(null);
 
   // Simulasi data dari API
   const [progressData, setProgressData] = useState({
@@ -34,6 +36,7 @@ export default function ProgressTrackingPage() {
           setCurrentStep(data.currentStep);
           setPengajuanId(data.pengajuanId);
           setProgressData(data.progress);
+          setRejection(data.rejection ?? null);
 
           if (data.currentStep === 3 && data.pengajuanId) {
             router.replace(`/dashboard/user/permohonan?pengajuanId=${data.pengajuanId}`);
@@ -61,7 +64,9 @@ export default function ProgressTrackingPage() {
     {
       step: 2,
       title: "Menunggu Verifikasi Admin",
-      description: "Data Anda sedang diverifikasi oleh admin",
+      description: rejection
+        ? "Pengajuan Anda ditolak oleh admin"
+        : "Data Anda sedang diverifikasi oleh admin",
       status: progressData.step2.status,
       date: progressData.step2.date,
       icon: <Clock className="h-6 w-6" />,
@@ -124,6 +129,24 @@ export default function ProgressTrackingPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
+      {rejection && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Surat Pernyataan Ditolak</AlertTitle>
+          <AlertDescription>
+            <div>
+              {rejection.reason
+                ? `Alasan penolakan: ${rejection.reason}`
+                : "Alasan penolakan belum diberikan oleh admin."}
+            </div>
+            {rejection.reviewedAt && (
+              <div className="mt-2 text-sm">
+                Ditolak pada {new Date(rejection.reviewedAt).toLocaleString("id-ID")}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-2xl">Progress Pengajuan Surat Ahli Waris</CardTitle>
@@ -153,14 +176,23 @@ export default function ProgressTrackingPage() {
                   <div className="ml-6 flex-1">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold">{step.title}</h3>
-                      <span className={`
+                    <span className={`
                         px-3 py-1 text-sm rounded-full
-                        ${step.status === "completed" ? "bg-green-100 text-green-800" : 
-                          step.status === "current" ? "bg-blue-100 text-blue-800" : 
-                          "bg-gray-100 text-gray-800"}
+                        ${rejection && step.step === 2
+                          ? "bg-red-100 text-red-800"
+                          : step.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : step.status === "current"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-gray-100 text-gray-800"}
                       `}>
-                        {step.status === "completed" ? "Selesai" : 
-                         step.status === "current" ? "Sedang Berjalan" : "Menunggu"}
+                        {rejection && step.step === 2
+                          ? "Ditolak"
+                          : step.status === "completed"
+                            ? "Selesai"
+                            : step.status === "current"
+                              ? "Sedang Berjalan"
+                              : "Menunggu"}
                       </span>
                     </div>
                     

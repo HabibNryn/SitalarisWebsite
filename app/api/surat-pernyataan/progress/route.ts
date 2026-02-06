@@ -41,14 +41,24 @@ export async function GET(request: Request) {
 
     const permohonanStatus = latestPengajuan.permohonan?.statusPermohonan || null;
 
+    const isRejected = latestPengajuan.status === "REJECTED";
+
     // Tentukan current step berdasarkan status surat + permohonan
     let currentStep = 1;
-    if (latestPengajuan.status === "SUBMITTED") {
+    if (isRejected) {
       currentStep = 2;
-    } else if (latestPengajuan.status === "VERIFIED" || latestPengajuan.status === "APPROVED") {
+    } else if (latestPengajuan.status === "SUBMITTED") {
+      currentStep = 2;
+    } else if (
+      latestPengajuan.status === "VERIFIED" ||
+      latestPengajuan.status === "APPROVED"
+    ) {
       if (permohonanStatus === "COMPLETED") {
         currentStep = 5;
-      } else if (permohonanStatus === "IN_REVIEW" || permohonanStatus === "APPROVED") {
+      } else if (
+        permohonanStatus === "IN_REVIEW" ||
+        permohonanStatus === "APPROVED"
+      ) {
         currentStep = 4;
       } else {
         currentStep = 3;
@@ -64,48 +74,59 @@ export async function GET(request: Request) {
         date: latestPengajuan.createdAt.toISOString(),
       },
       step2: {
-        status:
-          latestPengajuan.status === "SUBMITTED"
+        status: isRejected
+          ? "completed"
+          : latestPengajuan.status === "SUBMITTED"
             ? "current"
             : ["VERIFIED", "APPROVED", "COMPLETED"].includes(
                   latestPengajuan.status,
                 )
               ? "completed"
               : "pending",
-        date: latestPengajuan.submittedAt?.toISOString() || null,
+        date:
+          latestPengajuan.reviewedAt?.toISOString() ||
+          latestPengajuan.submittedAt?.toISOString() ||
+          null,
       },
       step3: {
-        status:
-          latestPengajuan.status === "VERIFIED" || latestPengajuan.status === "APPROVED"
+        status: isRejected
+          ? "pending"
+          : latestPengajuan.status === "VERIFIED" ||
+              latestPengajuan.status === "APPROVED"
             ? permohonanStatus
               ? ["IN_REVIEW", "APPROVED", "COMPLETED"].includes(permohonanStatus)
                 ? "completed"
                 : "current"
               : "current"
             : "pending",
-        date:
-          latestPengajuan.verifiedAt?.toISOString() ||
-          latestPengajuan.approvedAt?.toISOString() ||
-          null,
+        date: isRejected
+          ? null
+          : latestPengajuan.verifiedAt?.toISOString() ||
+            latestPengajuan.approvedAt?.toISOString() ||
+            null,
       },
       step4: {
-        status:
-          permohonanStatus === "IN_REVIEW" || permohonanStatus === "APPROVED"
+        status: isRejected
+          ? "pending"
+          : permohonanStatus === "IN_REVIEW" || permohonanStatus === "APPROVED"
             ? "current"
             : permohonanStatus === "COMPLETED"
               ? "completed"
               : "pending",
-        date: latestPengajuan.approvedAt?.toISOString() || null,
+        date: isRejected ? null : latestPengajuan.approvedAt?.toISOString() || null,
       },
       step5: {
-        status:
-          permohonanStatus === "COMPLETED" || latestPengajuan.status === "COMPLETED"
+        status: isRejected
+          ? "pending"
+          : permohonanStatus === "COMPLETED" ||
+              latestPengajuan.status === "COMPLETED"
             ? "completed"
             : "pending",
-        date:
-          latestPengajuan.completedAt?.toISOString() ||
-          latestPengajuan.permohonan?.updatedAt?.toISOString() ||
-          null,
+        date: isRejected
+          ? null
+          : latestPengajuan.completedAt?.toISOString() ||
+            latestPengajuan.permohonan?.updatedAt?.toISOString() ||
+            null,
       },
     };
 
@@ -115,6 +136,12 @@ export async function GET(request: Request) {
       pengajuanId: latestPengajuan.id,
       progress: progressData,
       pengajuan: latestPengajuan,
+      rejection: isRejected
+        ? {
+            reason: latestPengajuan.reviewNotes || null,
+            reviewedAt: latestPengajuan.reviewedAt?.toISOString() || null,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error fetching progress:", error);
