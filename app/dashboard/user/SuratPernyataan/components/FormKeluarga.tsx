@@ -9,7 +9,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/Form";
-import Input from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { 
   Select, 
   SelectContent, 

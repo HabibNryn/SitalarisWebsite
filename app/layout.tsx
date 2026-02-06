@@ -1,7 +1,8 @@
-// app/layout.tsx - Update
+// app/layout.tsx - Perbaiki
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import "./globals.css";
+import Navbar from "@/components/Navbar"; // Import Navbar
 
 export default function RootLayout({
   children,
@@ -12,7 +13,12 @@ export default function RootLayout({
     <html lang="id">
       <body>
         <Providers>
-          {children}
+          {/* Tambahkan Navbar di sini */}
+          <Navbar />
+          {/* Main content */}
+          <main className="min-h-screen">
+            {children}
+          </main>
           <Toaster position="top-right" />
         </Providers>
       </body>

@@ -1,7 +1,7 @@
 // components/forms/shared/BaseFormFields.tsx
 import { UseFormReturn } from "react-hook-form";
 import { BaseFormData } from "@/types/permohonan";
-import Input from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import {
   FormField,
   FormItem,

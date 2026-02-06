@@ -2,7 +2,7 @@
 import { UseFormReturn } from "react-hook-form";
 import { AhliWaris, SuratWarisFormData } from "@/types/permohonan";
 import { Button } from "@/components/ui/button";
-import Input from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import {
   FormField,
   FormItem,

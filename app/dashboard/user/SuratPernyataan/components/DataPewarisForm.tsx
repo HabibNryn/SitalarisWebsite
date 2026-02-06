@@ -8,7 +8,7 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/Form";
-import Input from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../types";
 import { Badge } from "@/components/ui/badge";
