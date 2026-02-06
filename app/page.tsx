@@ -1,4 +1,3 @@
-import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import LayananSection from "../components/LayananSection";
 import Footer from "../components/Footer";

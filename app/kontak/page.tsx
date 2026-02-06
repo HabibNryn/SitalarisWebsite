@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+
 const contactInfo = [
   {
     icon: <MapPin className="h-6 w-6" />,
