@@ -1,6 +1,3 @@
-// app/dashboard/SuratPernyataan/components/SuratPernyataanPDF.tsx
-"use client";
-
 import { Page, Text, View, Document, StyleSheet } from "@react-pdf/renderer";
 import { FormValues } from "../types";
 
@@ -91,33 +88,33 @@ const styles = StyleSheet.create({
   },
 
   // === SIGNATURE SECTION STYLES ===
-signatureSection: {
-  marginTop: 30,
-},
+  signatureSection: {
+    marginTop: 30,
+  },
 
-signatureRow: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  marginBottom: 20,
-},
+  signatureRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
 
-signatureBox: {
-  width: "45%",
-  alignItems: "center",
-},
+  signatureBox: {
+    width: "45%",
+    alignItems: "center",
+  },
 
-signatureLabel: {
-  fontSize: 11,
-  marginBottom: 10,
-  textAlign: "center",
-  lineHeight: 1.5,
-},
+  signatureLabel: {
+    fontSize: 11,
+    marginBottom: 10,
+    textAlign: "center",
+    lineHeight: 1.5,
+  },
 
-signatureName: {
-  fontSize: 11,
-  textAlign: "center",
-  marginTop: 5,
-},
+  signatureName: {
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 5,
+  },
 
   signatureRightContainer: {
     marginTop: 30,
@@ -166,7 +163,6 @@ signatureName: {
     width: 80,
     alignItems: "center",
   },
-
 
   meteraiText: {
     fontSize: 9,
@@ -314,9 +310,10 @@ signatureName: {
 
 interface SuratPernyataanPDFProps {
   data: FormValues;
+  kondisiId?: string; // ID kondisi dari array yang Anda berikan
 }
 
-export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
+export default function SuratPernyataanPDF({ data, kondisiId = data.kondisi }: SuratPernyataanPDFProps) {
   // === VALIDATION ===
   if (!data || !data.dataPewaris) {
     return (
@@ -335,13 +332,40 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
 
   const pewaris = data.dataPewaris;
   const ahliWaris = data.ahliWaris ?? [];
+  const dataAnakMeninggal = data.anakMeninggal ?? [];
 
   // Filter berdasarkan hubungan
   const istri = ahliWaris.filter((item) => item.hubungan === "ISTRI");
+  const suami = ahliWaris.filter((item) => item.hubungan === "SUAMI");
   const anak = ahliWaris.filter((item) => item.hubungan === "ANAK");
+  const cucu = ahliWaris.filter((item) => item.hubungan === "CUCU");
+  const orangTua = ahliWaris.filter((item) => 
+    item.hubungan === "ORANG_TUA"
+  );
+  const saudara = ahliWaris.filter((item) => item.hubungan === "SAUDARA");
+
+  // Format tanggal lengkap untuk surat
+  const currentDate = new Date();
+  const currentDay = currentDate.getDate();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
   
-  // Gabungkan istri dan anak untuk tanda tangan
-  const ahliWarisTandatangan = [...istri, ...anak].slice(0, 4); // Max 4 untuk tanda tangan
+  const bulan = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+
+  const tanggalSuratLengkap = `${currentDay} ${bulan[currentMonth]} ${currentYear}`;
 
   // === HELPER FUNCTIONS ===
   const formatDate = (dateString?: string): string => {
@@ -354,21 +378,6 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
       const day = date.getDate();
       const month = date.getMonth();
       const year = date.getFullYear();
-
-      const bulan = [
-        "Januari",
-        "Februari",
-        "Maret",
-        "April",
-        "Mei",
-        "Juni",
-        "Juli",
-        "Agustus",
-        "September",
-        "Oktober",
-        "November",
-        "Desember",
-      ];
 
       return `${day} ${bulan[month]} ${year}`;
     } catch (error) {
@@ -407,29 +416,756 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
     return nomor;
   };
 
+  // Fungsi untuk menentukan judul berdasarkan jenis kelamin pewaris
+  const getJudulPewaris = () => {
+    if (pewaris.jenisKelamin === "PEREMPUAN") {
+      return "Almarhumah";
+    }
+    return "Almarhum";
+  };
 
-  // Format tanggal lengkap untuk surat
-  const currentDate = new Date();
-  const currentDay = currentDate.getDate();
-  const currentMonth = currentDate.getMonth();
-  const currentYear = currentDate.getFullYear();
-  
-  const bulan = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
+  // Fungsi untuk menentukan apakah menikah 1 atau 2 kali
+  const getStatusPernikahan = () => {
+    if (kondisiId === "kondisi4") {
+      return "menikah 2 (dua) kali";
+    }
+    return `menikah hanya ${istri.length > 0 ? "1 (satu)" : "tidak pernah"} kali`;
+  };
 
-  const tanggalSuratLengkap = `${currentDay} ${bulan[currentMonth]} ${currentYear}`;
+  // Fungsi untuk render daftar ahli waris berdasarkan kondisi
+  const renderDaftarAhliWaris = () => {
+    switch (kondisiId) {
+      case "kondisi1": // 1 istri, semua anak hidup
+        return (
+          <>
+            {istri.length > 0 && (
+              <View style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>1. Nama</Text>
+                  <Text style={styles.formValue}>: {istri[0].nama || "__________"} (Istri)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(istri[0].tempatLahir, istri[0].tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {istri[0].pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {istri[0].agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(istri[0].alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {istri[0].nik || "__________"}</Text>
+                </View>
+              </View>
+            )}
+
+            {anak.map((anakItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{istri.length > 0 ? index + 2 : index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {anakItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {anakItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(anakItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {anakItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        );
+
+      case "kondisi2": // 1 istri, ada anak yang meninggal (tanpa keturunan)
+        const semuaAnak = ahliWaris.filter((item) => item.hubungan === "ANAK");
+        const anakHidupK2 = semuaAnak.filter((item) => item.statusHidup === "HIDUP");
+        const anakMeninggalTanpaKeturunan = semuaAnak.filter(
+          (item) => item.statusHidup === "MENINGGAL" && item.memilikiKeturunan === false
+        );
+        
+        const totalAnakK2 = anakHidupK2.length + anakMeninggalTanpaKeturunan.length;
+        
+        return (
+          <>
+            <Text style={[styles.paragraph, styles.mb10]}>
+              Semasa hidupnya {getJudulPewaris()}{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(pewaris.nama, pewaris.namaAyah, pewaris.jenisKelamin)}
+              </Text>{" "}
+              {getStatusPernikahan()}{" "}
+              {istri.length > 0 && (
+                <>
+                  dengan {istri[0].statusHidup === "MENINGGAL" ? "Almarhumah " : ""}
+                  <Text style={styles.bold}>
+                    {formatNamaLengkap(istri[0].nama, istri[0].namaAyah, istri[0].jenisKelamin)}
+                  </Text>{" "}
+                </>
+              )}
+              sesuai Surat Nikah Nomor{" "}
+              <Text style={styles.bold}>{pewaris.noSuratNikah || "__________"}</Text> tanggal{" "}
+              <Text style={styles.bold}>{formatDate(pewaris.tanggalNikah)}</Text> dari{" "}
+              <Text style={styles.bold}>{pewaris.instansiNikah || "__________"}</Text>, dari perkawinannya dikaruniai{" "}
+              <Text style={styles.bold}>
+                {totalAnakK2} ({totalAnakK2 === 1 ? "satu" : totalAnakK2 === 2 ? "dua" : totalAnakK2 === 3 ? "tiga" : "empat"})
+              </Text> orang anak,{" "}
+              <Text style={styles.bold}>
+                {anakHidupK2.length} ({anakHidupK2.length === 1 ? "satu" : anakHidupK2.length === 2 ? "dua" : "tiga"})
+              </Text> orang yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Anak yang masih hidup */}
+            {anakHidupK2.map((anakItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {anakItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {anakItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(anakItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {anakItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+
+            {/* Anak yang meninggal tanpa keturunan */}
+            {anakMeninggalTanpaKeturunan.map((anakItem, index) => {
+              const startNumber = anakHidupK2.length + 1;
+              const dataKematianAnak = dataAnakMeninggal?.find(
+                (data) => data.nama === anakItem.nama
+              ) || dataAnakMeninggal?.[index];
+              
+              return (
+                <View key={`meninggal-${index}`} style={styles.listItem}>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>{startNumber}. Nama</Text>
+                    <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak)</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                    <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                  </View>
+                  <Text style={[styles.paragraph, styles.ml10]}>
+                    Telah meninggal dunia di Jakarta pada tanggal{" "}
+                    <Text style={styles.bold}>
+                      {formatDate(dataKematianAnak?.tanggalMeninggal) || "__________"}
+                    </Text>{" "}
+                    sesuai dengan Akte Kematian dari Dinas Dukcapil Provinsi DKI Jakarta Nomor :{" "}
+                    <Text style={styles.bold}>
+                      {formatAkteKematian(dataKematianAnak?.nomorAkteKematian) || "3173-KM-__________"}
+                    </Text>{" "}
+                    tanggal{" "}
+                    <Text style={styles.bold}>
+                      {formatDate(dataKematianAnak?.tanggalAkteKematian) || "__________"}
+                    </Text>{" "}
+                    Bulan{" "}. Semasa hidupnya almarhum/almarhumah{" "}
+                    <Text style={styles.bold}>{anakItem.nama || "__________"}</Text> belum pernah menikah dan tidak memiliki keturunan (Anak).
+                  </Text>
+                </View>
+              );
+            })}
+          </>
+        );
+
+      case "kondisi3": // 1 istri, ada anak yang meninggal (dengan keturunan)
+        // Mengambil data dari form
+        const anakList = ahliWaris.filter((item) => item.hubungan === "ANAK");
+        const anakMeninggalDenganKeturunan = anakList.filter(
+          (item) => item.statusHidup === "MENINGGAL" && item.memilikiKeturunan === true
+        );
+        const anakHidupList = anakList.filter((item) => item.statusHidup === "HIDUP");
+        const cucuList = ahliWaris.filter((item) => item.hubungan === "CUCU");
+        
+        // Total anak = anak hidup + anak meninggal dengan keturunan
+        const totalAnak = anakHidupList.length + anakMeninggalDenganKeturunan.length;
+        
+        return (
+          <>
+            <Text style={[styles.paragraph, styles.mb10]}>
+              Semasa hidupnya {getJudulPewaris()}{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(pewaris.nama, pewaris.namaAyah, pewaris.jenisKelamin)}
+              </Text>{" "}
+              {getStatusPernikahan()}{" "}
+              {istri.length > 0 && (
+                <>
+                  dengan {istri[0].statusHidup === "MENINGGAL" ? "Almarhumah " : ""}
+                  <Text style={styles.bold}>
+                    {formatNamaLengkap(istri[0].nama, istri[0].namaAyah, istri[0].jenisKelamin)}
+                  </Text>{" "}
+                </>
+              )}
+              sesuai Surat Nikah Nomor{" "}
+              <Text style={styles.bold}>{pewaris.noSuratNikah || "__________"}</Text> tanggal{" "}
+              <Text style={styles.bold}>{formatDate(pewaris.tanggalNikah)}</Text> dari{" "}
+              <Text style={styles.bold}>{pewaris.instansiNikah || "__________"}</Text>, dari perkawinannya dikaruniai{" "}
+              <Text style={styles.bold}>
+                {totalAnak} ({totalAnak === 1 ? "satu" : totalAnak === 2 ? "dua" : totalAnak === 3 ? "tiga" : "empat"})
+              </Text> orang anak,{" "}
+              <Text style={styles.bold}>
+                {anakHidupList.length} ({anakHidupList.length === 1 ? "satu" : anakHidupList.length === 2 ? "dua" : "tiga"})
+              </Text> orang yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Anak yang masih hidup */}
+            {anakHidupList.map((anakItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {anakItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {anakItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(anakItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {anakItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+
+            {/* Anak yang meninggal dengan keturunan */}
+            {anakMeninggalDenganKeturunan.map((anakItem, index) => {
+              const startNumber = anakHidupList.length + 1;
+              
+              // Mencari data kematian anak dari form dataAnakMeninggal
+              const dataKematianAnak = dataAnakMeninggal?.find(
+                (data) => data.nama === anakItem.nama
+              ) || dataAnakMeninggal?.[index];
+              
+              return (
+                <View key={`meninggal-${index}`} style={styles.listItem}>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>{startNumber}. Nama</Text>
+                    <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak)</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                    <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                  </View>
+                  <Text style={[styles.paragraph, styles.ml10]}>
+                    Telah meninggal dunia di Jakarta pada tanggal{" "}
+                    <Text style={styles.bold}>
+                      {formatDate(dataKematianAnak?.tanggalMeninggal) || "__________"}
+                    </Text>{" "}
+                    sesuai dengan Akte Kematian dari Dinas Dukcapil Provinsi DKI Jakarta Nomor :{" "}
+                    <Text style={styles.bold}>
+                      {formatAkteKematian(dataKematianAnak?.nomorAkteKematian) || "3173-KM-__________"}
+                    </Text>{" "}
+                    tanggal{" "}
+                    <Text style={styles.bold}>
+                      {formatDate(dataKematianAnak?.tanggalAkteKematian) || "__________"}
+                    </Text>{" "}
+                    . Semasa hidupnya{" "}
+                    {anakItem.jenisKelamin === "PEREMPUAN" ? "almarhumah" : "almarhum"}{" "}
+                    <Text style={styles.bold}>{anakItem.nama || "__________"}</Text> menikah dengan{" "}
+                    <Text style={styles.bold}>
+                      {dataKematianAnak?.namaPasangan || "__________"}
+                    </Text>{" "}
+                    sesuai dengan surat nikah nomor :{" "}
+                    <Text style={styles.bold}>
+                      {dataKematianAnak?.nomorSuratNikah || "__________"}
+                    </Text>{" "}
+                    tanggal{" "}
+                    <Text style={styles.bold}>
+                      {formatDate(dataKematianAnak?.tanggalNikah) || "__________"}
+                    </Text>{" "}
+                    dan memiliki{" "}
+                    <Text style={styles.bold}>
+                      {cucuList.length} ({cucuList.length === 1 ? "satu" : "dua"})
+                    </Text> orang anak yaitu :
+                  </Text>
+
+                  {/* Cucu-cucu */}
+                  {cucuList.map((cucuItem, cucuIndex) => (
+                    <View key={cucuIndex} style={[styles.listItem, styles.ml20]}>
+                      <View style={styles.formRow}>
+                        <Text style={styles.formLabel}>
+                          {cucuIndex === 0 ? "A." : "B."} Nama
+                        </Text>
+                        <Text style={styles.formValue}>: {cucuItem.nama || "__________"} (cucu)</Text>
+                      </View>
+                      <View style={styles.formRow}>
+                        <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                        <Text style={styles.formValue}>: {formatTTL(cucuItem.tempatLahir, cucuItem.tanggalLahir)}</Text>
+                      </View>
+                      <View style={styles.formRow}>
+                        <Text style={styles.formLabel}>Pekerjaan</Text>
+                        <Text style={styles.formValue}>: {cucuItem.pekerjaan || "__________"}</Text>
+                      </View>
+                      <View style={styles.formRow}>
+                        <Text style={styles.formLabel}>Agama</Text>
+                        <Text style={styles.formValue}>: {cucuItem.agama || "__________"}</Text>
+                      </View>
+                      <View style={styles.formRow}>
+                        <Text style={styles.formLabel}>Alamat</Text>
+                        <Text style={styles.formValue}>: {formatAlamat(cucuItem.alamat)}</Text>
+                      </View>
+                      <View style={styles.formRow}>
+                        <Text style={styles.formLabel}>No. KTP</Text>
+                        <Text style={styles.formValue}>: {cucuItem.nik || "__________"}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
+          </>
+        );
+
+      case "kondisi4": // Menikah 2 kali
+        const istriPertama = istri.find((item) => item.keterangan?.includes("PERTAMA") || item.urutan === 1);
+        const istriKedua = istri.find((item) => item.keterangan?.includes("KEDUA") || item.urutan === 2);
+        const anakIstriPertama = anak.filter((item) => item.keterangan?.includes("PERTAMA") || item.asalIstri === "PERTAMA");
+        const anakIstriKedua = anak.filter((item) => item.keterangan?.includes("KEDUA") || item.asalIstri === "KEDUA");
+
+        return (
+          <>
+            <Text style={[styles.paragraph, styles.mb10]}>
+              Semasa hidupnya {getJudulPewaris()}{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(pewaris.nama, pewaris.namaAyah, pewaris.jenisKelamin)}
+              </Text>{" "}
+              {getStatusPernikahan()}. Pernikahan ke 1 (satu) dengan{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(istriPertama?.nama, istriPertama?.namaAyah, istriPertama?.jenisKelamin)}
+              </Text>{" "}
+              sesuai Surat Nikah Nomor{" "}
+              <Text style={styles.bold}>{pewaris.noSuratNikah || "__________"}</Text> tanggal{" "}
+              <Text style={styles.bold}>{formatDate(pewaris.tanggalNikah)}</Text> dari{" "}
+              <Text style={styles.bold}>{pewaris.instansiNikah || "__________"}</Text>, dari perkawinannya dikaruniai{" "}
+              <Text style={styles.bold}>{anakIstriPertama.length} ({anakIstriPertama.length === 1 ? "satu" : "dua"})</Text> orang anak yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Istri pertama */}
+            {istriPertama && (
+              <View style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>1. Nama</Text>
+                  <Text style={styles.formValue}>: {istriPertama.nama || "__________"} (Istri Pertama)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(istriPertama.tempatLahir, istriPertama.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {istriPertama.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {istriPertama.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(istriPertama.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {istriPertama.nik || "__________"}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Anak dari istri pertama */}
+            {anakIstriPertama.map((anakItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{index + 2}. Nama</Text>
+                  <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak dari Istri Pertama)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {anakItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {anakItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(anakItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {anakItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+
+            <Text style={[styles.paragraph, styles.mt20, styles.mb10]}>
+              Pernikahan ke 2 (dua) dengan{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(istriKedua?.nama, istriKedua?.namaAyah, istriKedua?.jenisKelamin)}
+              </Text>{" "}
+              sesuai Surat Nikah Nomor{" "}
+              <Text style={styles.bold}>{pewaris.noSuratNikahKedua || "__________"}</Text> tanggal{" "}
+              <Text style={styles.bold}>{formatDate(pewaris.tanggalNikahKedua)}</Text> dari{" "}
+              <Text style={styles.bold}>{pewaris.instansiNikahKedua || "__________"}</Text>, dari perkawinannya dikaruniai{" "}
+              <Text style={styles.bold}>{anakIstriKedua.length} ({anakIstriKedua.length === 1 ? "satu" : "dua"})</Text> orang anak yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Istri kedua */}
+            {istriKedua && (
+              <View style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{anakIstriPertama.length + 2}. Nama</Text>
+                  <Text style={styles.formValue}>: {istriKedua.nama || "__________"} (Istri Kedua)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(istriKedua.tempatLahir, istriKedua.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {istriKedua.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {istriKedua.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(istriKedua.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {istriKedua.nik || "__________"}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Anak dari istri kedua */}
+            {anakIstriKedua.map((anakItem, index) => {
+              const startNumber = anakIstriPertama.length + (istriKedua ? 3 : 2);
+              return (
+                <View key={index} style={styles.listItem}>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>{startNumber + index}. Nama</Text>
+                    <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak dari Istri Kedua)</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                    <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>Pekerjaan</Text>
+                    <Text style={styles.formValue}>: {anakItem.pekerjaan || "__________"}</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>Agama</Text>
+                    <Text style={styles.formValue}>: {anakItem.agama || "__________"}</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>Alamat</Text>
+                    <Text style={styles.formValue}>: {formatAlamat(anakItem.alamat)}</Text>
+                  </View>
+                  <View style={styles.formRow}>
+                    <Text style={styles.formLabel}>No. KTP</Text>
+                    <Text style={styles.formValue}>: {anakItem.nik || "__________"}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        );
+
+      case "kondisi5": // Suami pewaris masih hidup (pewaris perempuan)
+        return (
+          <>
+            <Text style={[styles.paragraph, styles.mb10]}>
+              Semasa hidupnya {getJudulPewaris()}{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(pewaris.nama, pewaris.namaAyah, pewaris.jenisKelamin)}
+              </Text>{" "}
+              {getStatusPernikahan()}{" "}
+              {suami.length > 0 && (
+                <>
+                  dengan{" "}
+                  <Text style={styles.bold}>
+                    {formatNamaLengkap(suami[0].nama, suami[0].namaAyah, suami[0].jenisKelamin)}
+                  </Text>{" "}
+                </>
+              )}
+              sesuai Surat Nikah Nomor{" "}
+              <Text style={styles.bold}>{pewaris.noSuratNikah || "__________"}</Text> tanggal{" "}
+              <Text style={styles.bold}>{formatDate(pewaris.tanggalNikah)}</Text> dari{" "}
+              <Text style={styles.bold}>{pewaris.instansiNikah || "__________"}</Text>, dari perkawinannya dikaruniai{" "}
+              <Text style={styles.bold}>{anak.length} ({anak.length === 1 ? "satu" : "dua"})</Text> orang anak yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Suami */}
+            {suami.length > 0 && (
+              <View style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>1. Nama</Text>
+                  <Text style={styles.formValue}>: {suami[0].nama || "__________"} (Suami)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(suami[0].tempatLahir, suami[0].tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {suami[0].pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {suami[0].agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(suami[0].alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {suami[0].nik || "__________"}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Anak-anak */}
+            {anak.map((anakItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{suami.length > 0 ? index + 2 : index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {anakItem.nama || "__________"} (Anak)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {anakItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {anakItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(anakItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {anakItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        );
+
+      case "kondisi6": // Tidak memiliki keturunan (meninggalkan orang tua dan saudara)
+        return (
+          <>
+            <Text style={[styles.paragraph, styles.mb10]}>
+              Semasa hidupnya {getJudulPewaris()}{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(pewaris.nama, pewaris.namaAyah, pewaris.jenisKelamin)}
+              </Text>{" "}
+              belum pernah menikah secara Peraturan Perundang-Undangan Pernikahan yang berlaku (kawin tidak tercatat) hanya meninggalkan kedua orang tua kandung dan{" "}
+              <Text style={styles.bold}>{saudara.length} ({saudara.length === 1 ? "satu" : "dua"})</Text> orang saudara kandung yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Orang tua */}
+            {orangTua.map((orangtuaItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {orangtuaItem.nama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(orangtuaItem.tempatLahir, orangtuaItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {orangtuaItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {orangtuaItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(orangtuaItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {orangtuaItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+
+            {/* Saudara kandung */}
+            {saudara.map((saudaraItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{orangTua.length + index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.nama || "__________"} (Saudara Kandung)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(saudaraItem.tempatLahir, saudaraItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(saudaraItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        );
+
+      case "kondisi7": // Tidak memiliki keturunan, hanya saudara kandung
+        return (
+          <>
+            <Text style={[styles.paragraph, styles.mb10]}>
+              Semasa hidupnya {getJudulPewaris()}{" "}
+              <Text style={styles.bold}>
+                {formatNamaLengkap(pewaris.nama, pewaris.namaAyah, pewaris.jenisKelamin)}
+              </Text>{" "}
+              belum pernah menikah dan tidak memiliki keturunan, hanya meninggalkan{" "}
+              <Text style={styles.bold}>{saudara.length} ({saudara.length === 1 ? "satu" : "dua"})</Text> orang saudara kandung yang kini masih hidup, yaitu :
+            </Text>
+
+            {/* Saudara kandung */}
+            {saudara.map((saudaraItem, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>{index + 1}. Nama</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.nama || "__________"} (Saudara Kandung)</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Tempat Tgl. Lahir</Text>
+                  <Text style={styles.formValue}>: {formatTTL(saudaraItem.tempatLahir, saudaraItem.tanggalLahir)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Pekerjaan</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.pekerjaan || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Agama</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.agama || "__________"}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Alamat</Text>
+                  <Text style={styles.formValue}>: {formatAlamat(saudaraItem.alamat)}</Text>
+                </View>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>No. KTP</Text>
+                  <Text style={styles.formValue}>: {saudaraItem.nik || "__________"}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Fungsi untuk mendapatkan ahli waris yang akan tanda tangan
+  const getAhliWarisTandatangan = () => {
+    switch (kondisiId) {
+      case "kondisi1": // Istri + anak
+        return [...istri, ...anak].slice(0, 6);
+      case "kondisi2": // Istri + anak hidup
+      case "kondisi3": // Istri + anak hidup + cucu
+        const anakHidup = anak.filter((item) => item.statusHidup === "HIDUP");
+        const cucuList = ahliWaris.filter((item) => item.hubungan === "CUCU");
+        if (kondisiId === "kondisi3") {
+          return [...istri, ...anakHidup, ...cucuList].slice(0, 6);
+        }
+        return [...istri, ...anakHidup].slice(0, 6);
+      case "kondisi4": // Dua istri + anak-anak
+        const istriPertama = istri.find((item) => item.keterangan?.includes("PERTAMA") || item.urutan === 1);
+        const istriKedua = istri.find((item) => item.keterangan?.includes("KEDUA") || item.urutan === 2);
+        const semuaAhliWaris = [];
+        if (istriPertama) semuaAhliWaris.push(istriPertama);
+        if (istriKedua) semuaAhliWaris.push(istriKedua);
+        semuaAhliWaris.push(...anak);
+        return semuaAhliWaris.slice(0, 6);
+      case "kondisi5": // Suami + anak
+        return [...suami, ...anak].slice(0, 6);
+      case "kondisi6": // Orang tua + saudara
+        return [...orangTua, ...saudara].slice(0, 6);
+      case "kondisi7": // Saudara saja
+        return saudara.slice(0, 6);
+      default:
+        return [...istri, ...anak].slice(0, 6);
+    }
+  };
+
+  const ahliWarisTandatangan = getAhliWarisTandatangan();
 
   return (
     <Document>
@@ -443,7 +1179,7 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
         {/* Pembukaan */}
         <View style={styles.formSection}>
           <Text style={styles.paragraph}>
-            Kami yang bertandatangan di bawah ini para ahli waris dari Almarhum{" "}
+            Kami yang bertandatangan di bawah ini para ahli waris dari {getJudulPewaris()}{" "}
             <Text style={styles.bold}>
               {formatNamaLengkap(
                 pewaris.nama,
@@ -455,7 +1191,7 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
 
           <Text style={styles.paragraph}>
             Dengan ini menyatakan dengan sesungguhnya dan sanggup diangkat
-            sumpah, bahwa Almarhum{" "}
+            sumpah, bahwa {getJudulPewaris()}{" "}
             <Text style={styles.bold}>
               {formatNamaLengkap(
                 pewaris.nama,
@@ -493,106 +1229,8 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
             .
           </Text>
 
-          <Text style={styles.paragraph}>
-            Semasa hidupnya Almarhum{" "}
-            <Text style={styles.bold}>
-              {formatNamaLengkap(
-                pewaris.nama,
-                pewaris.namaAyah,
-                pewaris.jenisKelamin,
-              )}
-            </Text>{" "}
-            menikah hanya {istri.length} (
-            {istri.length === 1
-              ? "satu"
-              : istri.length === 0
-                ? "tidak"
-                : istri.length}
-            ) kali{" "}
-            {istri.length > 0 ? (
-              <>
-                dengan Almarhumah{" "}
-                <Text style={styles.bold}>
-                  {formatNamaLengkap(
-                    istri[0]?.nama,
-                    istri[0]?.namaAyah,
-                    istri[0]?.jenisKelamin,
-                  )}
-                </Text>{" "}
-              </>
-            ) : (
-              "tidak memiliki istri"
-            )}
-            Sesuai Surat Nikah Nomor{" "}
-            <Text style={styles.bold}>
-              {pewaris.noSuratNikah || "__________"}
-            </Text>{" "}
-            tanggal{" "}
-            <Text style={styles.bold}>{formatDate(pewaris.tanggalNikah)}</Text>{" "}
-            dari {" "}
-            <Text style={styles.bold}>{pewaris.instansiNikah || "__________"}</Text>,
-            dari perkawinannya dikaruniai {anak.length} (tiga) orang yang kini
-            masih hidup, yaitu :
-          </Text>
-        </View>
-
-        {/* Daftar Anak */}
-        <View style={[styles.formSection, styles.mt10]}>
-          {anak.slice(0, 3).map((anakItem, index) => (
-            <View key={index} style={styles.listItem}>
-
-              {/* BARIS NAMA (SEJAJAR DENGAN FIELD LAIN) */}
-              <View style={styles.formRow}>
-                <Text style={styles.formLabel}>
-                  {index + 1}. Nama 
-                </Text>
-                <Text style={styles.formValue}>
-                  : {anakItem.nama || "__________"} (Anak)
-                </Text>
-              </View>
-
-              {/* TEMPAT / TGL LAHIR */}
-              <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Tempat Tgl. Lahir </Text>
-                <Text style={styles.formValue}>
-                  : {formatTTL(anakItem.tempatLahir, anakItem.tanggalLahir)}
-                </Text>
-              </View>
-
-              {/* PEKERJAAN */}
-              <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Pekerjaan </Text>
-                <Text style={styles.formValue}>
-                  : {anakItem.pekerjaan || "__________"}
-                </Text>
-              </View>
-
-              {/* AGAMA */}
-              <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Agama </Text>
-                <Text style={styles.formValue}>
-                  : {anakItem.agama || "__________"}
-                </Text>
-              </View>
-
-              {/* ALAMAT */}
-              <View style={styles.formRow}>
-                <Text style={styles.formLabel}>Alamat </Text>
-                <Text style={styles.formValue}>
-                  : {formatAlamat(anakItem.alamat)}
-                </Text>
-              </View>
-
-              {/* NIK */}
-              <View style={styles.formRow}>
-                <Text style={styles.formLabel}>No. KTP </Text>
-                <Text style={styles.formValue}>
-                  : {anakItem.nik || "__________"}
-                </Text>
-              </View>
-
-            </View>
-          ))}
+          {/* Konten dinamis berdasarkan kondisi */}
+          {renderDaftarAhliWaris()}
         </View>
 
         {/* Penutup */}
@@ -655,7 +1293,6 @@ export default function SuratPernyataanPDF({ data }: SuratPernyataanPDFProps) {
           </View>
         </View>
       </Page>
-
 
       {/* ========== HALAMAN 2 ========== */}
       <Page size="A4" style={styles.page2}>

@@ -81,15 +81,28 @@ export async function GET(
       )
     }
     
-    // Parse ahliWaris jika berupa string JSON
-    let ahliWarisData = submission.ahliWaris
-    if (typeof submission.ahliWaris === 'string') {
-      try {
-        ahliWarisData = JSON.parse(submission.ahliWaris as string)
-      } catch {
-        ahliWarisData = []
+    const parseJsonField = <T>(value: unknown, fallback: T): T => {
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value) as T
+        } catch {
+          return fallback
+        }
       }
+      if (value == null) return fallback
+      return value as T
     }
+
+    // Parse JSON fields (handle stringified JSON)
+    const ahliWarisData = parseJsonField<unknown[]>(submission.ahliWaris, [])
+    const dataPewarisData = parseJsonField<Record<string, unknown>>(
+      submission.dataPewaris,
+      {}
+    )
+    const anakMeninggalData = parseJsonField<unknown[] | null>(
+      submission.anakMeninggal,
+      null
+    )
     
     // Format response sesuai dengan schema
     const formattedSubmission = {
@@ -97,52 +110,27 @@ export async function GET(
       nomorSurat: submission.nomorSurat,
       kondisi: submission.kondisi,
       
-      // Data pewaris (dari field schema)
-      namaPewaris: submission.namaPewaris,
-      namaAyahPewaris: submission.namaAyahPewaris,
-      tempatLahirPewaris: submission.tempatLahirPewaris,
-      tanggalLahirPewaris: submission.tanggalLahirPewaris,
-      alamatPewaris: submission.alamatPewaris,
-      rtPewaris: submission.rtPewaris,
-      rwPewaris: submission.rwPewaris,
-      kelurahanPewaris: submission.kelurahanPewaris,
-      kecamatanPewaris: submission.kecamatanPewaris,
-      kotaPewaris: submission.kotaPewaris,
-      agamaPewaris: submission.agamaPewaris,
-      pekerjaanPewaris: submission.pekerjaanPewaris,
-      
-      // Data meninggal
-      tempatMeninggal: submission.tempatMeninggal,
-      tanggalMeninggal: submission.tanggalMeninggal,
-      noAkteKematian: submission.noAkteKematian,
-      tanggalAkteKematian: submission.tanggalAkteKematian,
-      instansiAkteKematian: submission.instansiAkteKematian,
-      
-      // Data pernikahan
-      statusPernikahan: submission.statusPernikahan,
-      noSuratNikah: submission.noSuratNikah,
-      tanggalNikah: submission.tanggalNikah,
-      instansiNikah: submission.instansiNikah,
-      
-      // Ahli waris (dari field Json)
+      // JSON fields
+      dataPewaris: dataPewarisData,
       ahliWaris: ahliWarisData,
-      jumlahAnak: submission.jumlahAnak,
-      jumlahIstri: submission.jumlahIstri,
-      jumlahSaudara: submission.jumlahSaudara,
-      jumlahCucu: submission.jumlahCucu,
+      anakMeninggal: anakMeninggalData,
+      tambahanKeterangan: submission.tambahanKeterangan || '',
+      noSuratNikahKedua: submission.noSuratNikahKedua,
+      tanggalNikahKedua: submission.tanggalNikahKedua?.toISOString() || null,
+      instansiNikahKedua: submission.instansiNikahKedua,
       
       // Status dan metadata
       status: submission.status,
-      catatan: submission.catatan,
+      reviewNotes: submission.reviewNotes,
       isGenerated: submission.isGenerated,
       downloadCount: submission.downloadCount,
       pdfFileName: submission.pdfFileName,
       pdfFileSize: submission.pdfFileSize,
-      pdfLastGenerated: submission.pdfLastGenerated,
+      pdfUrl: submission.pdfUrl,
       createdAt: submission.createdAt.toISOString(),
       updatedAt: submission.updatedAt.toISOString(),
       reviewedAt: submission.reviewedAt?.toISOString() || null,
-      tanggalSurat: submission.tanggalSurat.toISOString(),
+      tanggalSurat: submission.createdAt.toISOString(),
       
       // Relations
       user: submission.user,
@@ -156,20 +144,19 @@ export async function GET(
       })),
       
       // Tambahan untuk kompatibilitas dengan frontend yang ada
-      dataPewaris: {
-        nama: submission.namaPewaris,
-        namaAyah: submission.namaAyahPewaris,
-        tempatLahir: submission.tempatLahirPewaris,
-        tanggalLahir: submission.tanggalLahirPewaris.toISOString(),
-        tempatMeninggal: submission.tempatMeninggal || '',
-        tanggalMeninggal: submission.tanggalMeninggal?.toISOString() || '',
-        alamat: submission.alamatPewaris,
-        nomorAkteKematian: submission.noAkteKematian,
-        jenisKelamin: 'LAKI-LAKI' // Default karena tidak ada field di schema
+      dataPewarisCompat: {
+        nama: String(dataPewarisData.nama ?? ''),
+        namaAyah: String(dataPewarisData.namaAyah ?? ''),
+        tempatLahir: String(dataPewarisData.tempatLahir ?? ''),
+        tanggalLahir: String(dataPewarisData.tanggalLahir ?? ''),
+        tempatMeninggal: String(dataPewarisData.tempatMeninggal ?? ''),
+        tanggalMeninggal: String(dataPewarisData.tanggalMeninggal ?? ''),
+        alamat: String(dataPewarisData.alamat ?? ''),
+        nomorAkteKematian: String(dataPewarisData.nomorAkteKematian ?? ''),
+        jenisKelamin: String(dataPewarisData.jenisKelamin ?? 'LAKI-LAKI')
       },
-      tambahanKeterangan: submission.kondisi, // Gunakan kondisi sebagai tambahan keterangan
-      reviewNotes: submission.catatan, // Gunakan catatan sebagai reviewNotes
-      pdfUrl: submission.isGenerated ? `/api/submissions/${submission.id}/download` : null
+      catatan: submission.reviewNotes || submission.tambahanKeterangan || '',
+      pdfDownloadUrl: submission.pdfUrl
     }
     
     return NextResponse.json({

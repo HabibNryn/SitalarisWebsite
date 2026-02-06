@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth/auth-options'
 import { generatePDF } from '@/app/lib/pdf'
+import { Prisma } from '@prisma/client'
 
 export async function POST(
   request: NextRequest,
@@ -91,13 +92,17 @@ export async function POST(
     }
     
     // Get request body for notes
-    const body = await request.json().catch(() => ({}))
-    const notes = body.notes || ''
+    const body = (await request.json().catch(() => ({}))) as {
+      notes?: string
+    }
+    const notes = typeof body.notes === 'string' ? body.notes : ''
     
-    // Prepare data for update
-    const updateData: any = {
+    // ========== PERUBAHAN DI SINI ==========
+    // Prepare data for update - TAMBAHKAN can_access_permohonan: true
+    const updateData: Prisma.SuratPernyataanUpdateInput = {
       status: 'APPROVED',
       reviewedAt: new Date(),
+      can_access_permohonan: true, // <-- INI YANG DITAMBAHKAN
     }
     
     // Add notes only if provided
@@ -112,6 +117,7 @@ export async function POST(
       include: {
         user: {
           select: {
+            id: true, // <-- Tambahkan ini untuk notifikasi
             name: true,
             email: true
           }
@@ -132,7 +138,7 @@ export async function POST(
         suratPernyataanId: submissionId,
         userId: session.user.id,
         action: 'STATUS_CHANGE',
-        details: `Status berubah dari ${submission.status} menjadi APPROVED. ${notes ? `Catatan: ${notes}` : 'Tidak ada catatan'}`,
+        details: `Status berubah dari ${submission.status} menjadi APPROVED. User mendapatkan akses untuk mengisi form permohonan. ${notes ? `Catatan: ${notes}` : 'Tidak ada catatan'}`,
         metadata: {
           oldStatus: submission.status,
           newStatus: 'APPROVED',
@@ -140,33 +146,51 @@ export async function POST(
           reviewerName: session.user.name || '',
           notes: notes || null,
           kondisi: submission.kondisi,
-          nomorSurat: submission.nomorSurat
+          nomorSurat: submission.nomorSurat,
+          can_access_permohonan: true, // <-- Tambahkan ke log
+          granted_at: new Date().toISOString()
         }
       }
     })
     
-    // Update related permohonan if exists (PERBAIKI: gunakan relasi yang benar)
-    if (submission.permohonan) {
-      try {
-        await prisma.permohonanAhliWaris.update({
-          where: { id: submission.permohonan.id },
-          data: {
-            statusPermohonan: 'COMPLETED',
-            updatedAt: new Date()
+    // NOTE:
+    // Jangan mengubah status permohonan di tahap persetujuan surat pernyataan.
+    // Setelah disetujui, user baru mendapatkan akses untuk mengisi form permohonan.
+    
+    // ========== NOTIFIKASI KE USER ==========
+    // Anda bisa tambahkan notifikasi di sini
+    try {
+      // Contoh: Kirim notifikasi ke user
+      await prisma.notification.create({
+        data: {
+          userId: updatedSubmission.user.id,
+          title: 'Surat Pernyataan Disetujui',
+          message: `Surat pernyataan Anda telah disetujui oleh admin. Anda sekarang dapat mengisi form surat permohonan ahli waris.`,
+          isRead: false,
+          metadata: {
+            suratPernyataanId: submissionId,
+            action: 'ACCESS_GRANTED',
+            next_step_url: '/dashboard/SuratPermohonan'
           }
-        })
-        console.log('Updated related permohonan:', submission.permohonan.id)
-      } catch (permohonanError) {
-        console.warn('Failed to update related permohonan:', permohonanError)
-        // Tidak throw error, karena update surat sudah berhasil
-      }
+        }
+      })
+      
+      // Anda juga bisa kirim email di sini jika diperlukan
+      console.log(`Access granted for user ${updatedSubmission.user.id} to fill permohonan form`)
+      
+    } catch (notificationError) {
+      console.warn('Failed to send notification:', notificationError)
+      // Jangan gagalkan proses karena notifikasi gagal
     }
     
     // Generate PDF jika diperlukan (opsional)
     try {
-      // Panggil service generate PDF di sini
-      const htmlContent = `<h1>Surat Pernyataan</h1><p>ID: ${submissionId}</p>`
-      const fileName = `surat-pernyataan-${submissionId}.pdf`
+      const htmlContent = `<h1>Surat Pernyataan Disetujui</h1>
+                          <p>ID: ${submissionId}</p>
+                          <p>Status: APPROVED</p>
+                          <p>Waktu: ${new Date().toLocaleString('id-ID')}</p>
+                          <p>Disetujui oleh: ${session.user.name || 'Admin'}</p>`
+      const fileName = `surat-pernyataan-approved-${submissionId}.pdf`
       await generatePDF(htmlContent, fileName)
     } catch (pdfError) {
       console.error('PDF generation failed:', pdfError)
@@ -175,18 +199,19 @@ export async function POST(
     
     return NextResponse.json({
       success: true,
-      data: updatedSubmission,
-      message: 'Surat pernyataan berhasil disetujui'
+      data: {
+        ...updatedSubmission,
+        can_access_permohonan: true // <-- Pastikan ini ada di response
+      },
+      message: 'Surat pernyataan berhasil disetujui. User sekarang dapat mengisi form permohonan.'
     })
     
   } catch (error) {
     console.error('Approve error details:', error)
     
     // Handle Prisma errors
-    if (error instanceof Error && 'code' in error) {
-      const prismaError = error as any
-      
-      if (prismaError.code === 'P2025') {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
         return NextResponse.json(
           { 
             error: 'Gagal menyetujui surat pernyataan',
@@ -197,7 +222,7 @@ export async function POST(
         )
       }
       
-      if (prismaError.code === 'P2002') {
+      if (error.code === 'P2002') {
         return NextResponse.json(
           { 
             error: 'Gagal menyetujui surat pernyataan',
@@ -214,7 +239,7 @@ export async function POST(
       { 
         error: 'Gagal menyetujui surat pernyataan',
         details: error instanceof Error ? error.message : 'Unknown error',
-        stack: process.env.NODE_ENV === 'development' ? (error as any)?.stack : undefined
+        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     )

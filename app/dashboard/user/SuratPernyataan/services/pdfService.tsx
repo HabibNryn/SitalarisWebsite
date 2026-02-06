@@ -13,7 +13,7 @@ export async function generatePDFBlob(data: FormValues): Promise<Blob> {
   const { pdf } = await import('@react-pdf/renderer');
   const SuratPernyataanPDF = (await import('../components/SuratPernyataanPDF')).default;
 
-  const document = <SuratPernyataanPDF data={data} />;
+  const document = <SuratPernyataanPDF data={data} kondisiId={data.kondisi} />;
 
   const blob = await pdf(document).toBlob();
   return blob;

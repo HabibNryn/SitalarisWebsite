@@ -582,8 +582,6 @@ function getFieldLabel(fieldName: string): string {
     jenisKelamin: "Jenis Kelamin",
     statusPernikahan: "Status Pernikahan",
     agama: "Agama",
-    pekerjaan: "Pekerjaan",
-    kewarganegaraan: "Kewarganegaraan",
   };
   return labels[fieldName] || fieldName;
 }

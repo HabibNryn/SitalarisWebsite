@@ -11,59 +11,128 @@ import { Prisma } from "@prisma/client";
    ZOD SCHEMA
 ========================= */
 
+const JenisKelaminSchema = z.enum(["LAKI-LAKI", "PEREMPUAN"]);
+const StatusPernikahanSchema = z.enum([
+  "MENIKAH",
+  "BELUM_MENIKAH",
+  "CERAI_HIDUP",
+  "CERAI_MATI",
+]);
+const HubunganSchema = z.enum([
+  "ISTRI",
+  "SUAMI",
+  "ANAK",
+  "CUCU",
+  "SAUDARA",
+  "ORANG_TUA",
+  "LAINNYA",
+]);
+const KondisiSchema = z.enum([
+  "kondisi1",
+  "kondisi2",
+  "kondisi3",
+  "kondisi4",
+  "kondisi5",
+  "kondisi6",
+  "kondisi7",
+]);
+const StatusHidupSchema = z.enum(["HIDUP", "MENINGGAL"]);
+
 const AhliWarisSchema = z.object({
+  id: z.string().optional(),
   nama: z.string().min(1),
-  hubungan: z.enum(["ISTRI", "ANAK", "SAUDARA", "CUCU"]),
-  jenisKelamin: z.enum(["LAKI-LAKI", "PEREMPUAN"]),
-  masihHidup: z.boolean(),
-  memilikiKeturunan: z.boolean().optional().default(false),
+  hubungan: HubunganSchema,
+  jenisKelamin: JenisKelaminSchema,
   namaAyah: z.string().optional(),
   tempatLahir: z.string().optional(),
   tanggalLahir: z.string().optional(),
-  agama: z.string().optional(),
   pekerjaan: z.string().optional(),
-  kewarganegaraan: z.string().optional(),
+  agama: z.string().optional(),
   alamat: z.string().optional(),
-  rt: z.string().optional(),
-  rw: z.string().optional(),
-  kecamatan: z.string().optional(),
-  kelurahan: z.string().optional(),
+  nik: z.string().optional(),
+  statusHidup: StatusHidupSchema.optional(),
+  statusPernikahan: StatusPernikahanSchema.optional(),
+  memilikiKeturunan: z.boolean().optional().default(false),
+  urutan: z.number().optional(),
+  asalIstri: z.enum(["PERTAMA", "KEDUA"]).optional(),
+  nomorSuratNikah: z.string().optional(),
   keterangan: z.string().optional(),
+  status: z.boolean().optional(),
 });
 
 const DataPewarisSchema = z.object({
   nama: z.string().min(1),
-  namaAyah: z.string().optional(),
-  tempatLahir: z.string().optional(),
+  namaAyah: z.string().min(1),
+  tempatLahir: z.string().min(1),
   tanggalLahir: z.string().min(1),
-  alamat: z.string().optional(),
-  tempatMeninggal: z.string().optional(),
+  jenisKelamin: JenisKelaminSchema,
+  tempatMeninggal: z.string().min(1),
   tanggalMeninggal: z.string().min(1),
-  rtPewaris: z.string().optional(),
-  rwPewaris: z.string().optional(),
-  nomorAkteKematian: z.string().optional(),
-  tanggalAkteKematian: z.string().optional(),
-  statusPernikahan: z
-    .enum(["MENIKAH", "BELUM_MENIKAH", "CERAI_HIDUP", "CERAI_MATI"])
-    .optional(),
+  nomorAkteKematian: z.string().min(1),
+  tanggalAkteKematian: z.string().min(1),
+  alamat: z.string().min(1),
+  rt: z.string().min(1),
+  rw: z.string().min(1),
+  kelurahan: z.string().optional(),
+  kecamatan: z.string().optional(),
+  kota: z.string().optional(),
+  provinsi: z.string().optional(),
+  statusPernikahan: StatusPernikahanSchema,
   noSuratNikah: z.string().optional(),
+  tanggalNikah: z.string().optional(),
+  instansiNikah: z.string().optional(),
+  noSuratNikahKedua: z.string().optional(),
+  tanggalNikahKedua: z.string().optional(),
+  instansiNikahKedua: z.string().optional(),
+  pekerjaan: z.string().optional(),
+  agama: z.string().min(1),
+  nik: z.string().optional(),
+  jumlahAnak: z.number().optional(),
+  jumlahCucu: z.number().optional(),
+  jumlahSaudara: z.number().optional(),
+  jumlahIstri: z.number().optional(),
+});
+
+const AnakMeninggalSchema = z.object({
+  id: z.string().optional(),
+  nama: z.string().min(1),
+  tanggalLahir: z.string().min(1),
+  tanggalMeninggal: z.string().min(1),
+  nomorAkteKematian: z.string().min(1),
+  tanggalAkteKematian: z.string().min(1),
+  memilikiKeturunan: z.boolean().optional().default(false),
+  sudahMenikah: z.boolean().optional().default(false),
+  namaPasangan: z.string().optional(),
+  nomorSuratNikah: z.string().optional(),
   tanggalNikah: z.string().optional(),
   instansiNikah: z.string().optional(),
 });
 
 const FormSchema = z.object({
-  kondisi: z.enum([
-    "kondisi1",
-    "kondisi2",
-    "kondisi3",
-    "kondisi4",
-    "kondisi5",
-    "kondisi6",
-    "kondisi7",
-  ]),
+  kondisi: KondisiSchema,
   dataPewaris: DataPewarisSchema,
-  ahliWaris: z.array(AhliWarisSchema).min(1),
+  ahliWaris: z
+    .array(AhliWarisSchema)
+    .default([])
+    .transform((items) =>
+      items.map((item) => ({
+        ...item,
+        status:
+          typeof item.status === "boolean"
+            ? item.status
+            : item.statusHidup === "HIDUP",
+      }))
+    ),
+  anakMeninggal: z.array(AnakMeninggalSchema).optional(),
   tambahanKeterangan: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.kondisi !== "kondisi6" && data.ahliWaris.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["ahliWaris"],
+      message: "Minimal 1 ahli waris diperlukan",
+    });
+  }
 });
 
 /* =========================
@@ -86,7 +155,6 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
     const rawBody = await request.json();
     const data = FormSchema.parse(rawBody);
 
@@ -119,6 +187,14 @@ export async function POST(request: NextRequest) {
       { istri: 0, anak: 0, saudara: 0, cucu: 0 }
     );
 
+    const dataPewarisWithCounts = {
+      ...data.dataPewaris,
+      jumlahAnak: data.dataPewaris.jumlahAnak ?? jumlah.anak,
+      jumlahCucu: data.dataPewaris.jumlahCucu ?? jumlah.cucu,
+      jumlahSaudara: data.dataPewaris.jumlahSaudara ?? jumlah.saudara,
+      jumlahIstri: data.dataPewaris.jumlahIstri ?? jumlah.istri,
+    };
+
     // Simpan ke database
     const surat = await prisma.$transaction(async (tx) => {
       const created = await tx.suratPernyataan.create({
@@ -127,36 +203,21 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           kondisi: data.kondisi,
 
-          // Data pewaris
-          namaPewaris: data.dataPewaris.nama,
-          namaAyahPewaris: data.dataPewaris.namaAyah || "",
-          tempatLahirPewaris: data.dataPewaris.tempatLahir || "",
-          tanggalLahirPewaris: tanggalLahir,
-          alamatPewaris: data.dataPewaris.alamat || "",
-          tempatMeninggal: data.dataPewaris.tempatMeninggal || "",
-          tanggalMeninggal,
-          rtPewaris: data.dataPewaris.rtPewaris || "",
-          rwPewaris: data.dataPewaris.rwPewaris || "",
-          noAkteKematian: data.dataPewaris.nomorAkteKematian || "",
-          tanggalAkteKematian: parseDate(
-            data.dataPewaris.tanggalAkteKematian
-          ),
-          statusPernikahan: data.dataPewaris.statusPernikahan || "MENIKAH",
-          noSuratNikah: data.dataPewaris.noSuratNikah || "",
-          tanggalNikah: parseDate(data.dataPewaris.tanggalNikah),
-          instansiNikah: data.dataPewaris.instansiNikah || "",
-
           // JSON fields
-          dataPewaris: data.dataPewaris as Prisma.InputJsonValue,
+          dataPewaris: dataPewarisWithCounts as Prisma.InputJsonValue,
           ahliWaris: data.ahliWaris as Prisma.InputJsonValue,
+          anakMeninggal: data.anakMeninggal
+            ? (data.anakMeninggal as Prisma.InputJsonValue)
+            : undefined,
 
-          jumlahIstri: jumlah.istri,
-          jumlahAnak: jumlah.anak,
-          jumlahSaudara: jumlah.saudara,
-          jumlahCucu: jumlah.cucu,
+          // Informasi tambahan
+          tambahanKeterangan: data.tambahanKeterangan || "",
+          noSuratNikahKedua: data.dataPewaris.noSuratNikahKedua || null,
+          tanggalNikahKedua: parseDate(data.dataPewaris.tanggalNikahKedua) || null,
+          instansiNikahKedua: data.dataPewaris.instansiNikahKedua || null,
 
           status: "SUBMITTED",
-          catatan: data.tambahanKeterangan || "",
+          submittedAt: new Date(),
         },
       });
 

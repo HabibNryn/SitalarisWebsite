@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Users, UserPlus, AlertCircle, Info } from "lucide-react";
-import { FormValues, DataKeluargaType } from "../types";
+import { Plus, Trash2, Users, UserPlus, AlertCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { FormValues, KondisiType } from "../types";
 import FormKeluarga from "./FormKeluarga";
 import {
   Card,
@@ -15,8 +15,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getKondisiLabel } from "../constants/schemas";
-import { StatusPernikahan } from "@/types/pernyataanWaris";
+import { getKondisiLabel, getHubunganLabel } from "../constants/schemas";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Props {
   form: UseFormReturn<FormValues>;
@@ -26,7 +32,7 @@ export default function AhliWarisForm({ form }: Props) {
   const kondisi = form.watch("kondisi");
   const dataPewaris = form.watch("dataPewaris");
   const ahliWaris = form.watch("ahliWaris") || [];
-  
+  type AhliWarisItem = FormValues["ahliWaris"][number];
 
   const { append, remove, replace } = useFieldArray({
     control: form.control,
@@ -43,9 +49,11 @@ export default function AhliWarisForm({ form }: Props) {
     if (!kondisi || ahliWaris.length > 0) return;
 
     const baseData = (
-      hubungan: DataKeluargaType["hubungan"],
+      hubungan: AhliWarisItem["hubungan"],
       keterangan: string,
-    ): DataKeluargaType => ({
+      jenisKelamin: AhliWarisItem["jenisKelamin"] = "LAKI-LAKI",
+      statusPernikahan: AhliWarisItem["statusPernikahan"] = "BELUM_MENIKAH"
+    ): AhliWarisItem => ({
       nama: "",
       namaAyah: "",
       tempatLahir: "",
@@ -54,27 +62,25 @@ export default function AhliWarisForm({ form }: Props) {
       nik: "",
       pekerjaan: "",
       agama: "",
-      jenisKelamin: "LAKI-LAKI",
-      statusPernikahan: "MENIKAH",
+      jenisKelamin,
+      statusPernikahan,
       hubungan,
-      masihHidup: true,
+      statusHidup: "HIDUP",
       memilikiKeturunan: false,
       keterangan,
     });
 
     const isPewarisPerempuan = dataPewaris?.jenisKelamin === "PEREMPUAN";
 
-    switch (kondisi) {
+    switch (kondisi as KondisiType) {
       case "kondisi1": // 1 istri, semua anak hidup
       case "kondisi2": // 1 istri, ada anak meninggal
       case "kondisi3": // 1 istri, ada anak meninggal + cucu
         if (!isPewarisPerempuan) {
           replace([
             {
-              ...baseData("ISTRI", "Istri Pewaris"),
-              jenisKelamin: "PEREMPUAN",
-              statusPernikahan: "MENIKAH",
-              masihHidup: true,
+              ...baseData("ISTRI", "Istri Pewaris", "PEREMPUAN", "MENIKAH"),
+              statusHidup: "HIDUP",
             },
           ]);
         }
@@ -84,16 +90,16 @@ export default function AhliWarisForm({ form }: Props) {
         if (!isPewarisPerempuan) {
           replace([
             {
-              ...baseData("ISTRI", "Istri Pertama"),
-              jenisKelamin: "PEREMPUAN",
-              statusPernikahan: "MENIKAH",
-              masihHidup: true,
+              ...baseData("ISTRI", "Istri Pertama", "PEREMPUAN", "MENIKAH"),
+              urutan: 1,
+              asalIstri: "PERTAMA",
+              statusHidup: "HIDUP",
             },
             {
-              ...baseData("ISTRI", "Istri Kedua"),
-              jenisKelamin: "PEREMPUAN",
-              statusPernikahan: "MENIKAH",
-              masihHidup: true,
+              ...baseData("ISTRI", "Istri Kedua", "PEREMPUAN", "MENIKAH"),
+              urutan: 2,
+              asalIstri: "KEDUA",
+              statusHidup: "HIDUP",
             },
           ]);
         }
@@ -103,10 +109,8 @@ export default function AhliWarisForm({ form }: Props) {
         if (isPewarisPerempuan) {
           replace([
             {
-              ...baseData("SUAMI", "Suami Pewaris"),
-              jenisKelamin: "LAKI-LAKI",
-              statusPernikahan: "MENIKAH",
-              masihHidup: true,
+              ...baseData("SUAMI", "Suami Pewaris", "LAKI-LAKI", "MENIKAH"),
+              statusHidup: "HIDUP",
             },
           ]);
         }
@@ -115,41 +119,44 @@ export default function AhliWarisForm({ form }: Props) {
       case "kondisi7": // saudara kandung
         replace([
           {
-            ...baseData("SAUDARA", "Saudara Kandung"),
-            jenisKelamin: "LAKI-LAKI",
-            statusPernikahan: "BELUM_MENIKAH",
+            ...baseData("SAUDARA", "Saudara Kandung", "LAKI-LAKI", "BELUM_MENIKAH"),
+            statusHidup: "HIDUP",
             memilikiKeturunan: false,
           },
         ]);
         break;
 
-      case "kondisi6": // tidak ada ahli waris
+      case "kondisi6": // tidak ada ahli waris (tidak memiliki keturunan)
+        // Kosongkan ahli waris untuk kondisi 6
         replace([]);
         break;
     }
   }, [kondisi, ahliWaris.length, replace, dataPewaris?.jenisKelamin]);
 
+  /* =====================================================
+     VALIDASI OTOMATIS JENIS KELAMIN BERDASARKAN HUBUNGAN
+  ===================================================== */
   useEffect(() => {
-  ahliWaris.forEach((item, index) => {
-    if (item.hubungan === "ISTRI" && item.jenisKelamin !== "PEREMPUAN") {
-      form.setValue(`ahliWaris.${index}.jenisKelamin`, "PEREMPUAN");
-    }
+    ahliWaris.forEach((item, index) => {
+      // Otomatis set jenis kelamin berdasarkan hubungan
+      if (item.hubungan === "ISTRI" && item.jenisKelamin !== "PEREMPUAN") {
+        form.setValue(`ahliWaris.${index}.jenisKelamin`, "PEREMPUAN");
+      }
 
-    if (item.hubungan === "SUAMI" && item.jenisKelamin !== "LAKI-LAKI") {
-      form.setValue(`ahliWaris.${index}.jenisKelamin`, "LAKI-LAKI");
-    }
-  });
-}, [ahliWaris, form]);
-
+      if (item.hubungan === "SUAMI" && item.jenisKelamin !== "LAKI-LAKI") {
+        form.setValue(`ahliWaris.${index}.jenisKelamin`, "LAKI-LAKI");
+      }
+    });
+  }, [ahliWaris, form]);
 
   /* =====================================================
-     FUNGSI TAMBAH DATA - DIUPDATE
+     FUNGSI TAMBAH DATA
   ===================================================== */
   const tambahData = (
-    hubungan: DataKeluargaType["hubungan"],
+    hubungan: AhliWarisItem["hubungan"],
     keterangan: string,
-    jenisKelamin: "LAKI-LAKI" | "PEREMPUAN" = "LAKI-LAKI",
-    statusPernikahan: StatusPernikahan = "BELUM_MENIKAH",
+    jenisKelamin: AhliWarisItem["jenisKelamin"] = "LAKI-LAKI",
+    statusPernikahan: AhliWarisItem["statusPernikahan"] = "BELUM_MENIKAH"
   ) => {
     append({
       nama: "",
@@ -163,19 +170,34 @@ export default function AhliWarisForm({ form }: Props) {
       jenisKelamin,
       statusPernikahan,
       hubungan,
-      masihHidup: true,
+      statusHidup: "HIDUP",
       memilikiKeturunan: false,
       keterangan,
     });
   };
 
-  const tambahAnak = (istriKe: number = 1) => {
-    tambahData(
-      "ANAK",
-      `Anak dari ${istriKe === 1 ? "Istri Pertama" : "Istri Kedua"}`,
-      "LAKI-LAKI",
-      "BELUM_MENIKAH",
-    );
+  const tambahAnak = (asalIstri: "PERTAMA" | "KEDUA" = "PERTAMA") => {
+    const keterangan = asalIstri === "PERTAMA" 
+      ? "Anak dari Istri Pertama" 
+      : "Anak dari Istri Kedua";
+    
+    append({
+      nama: "",
+      namaAyah: dataPewaris.nama,
+      tempatLahir: "",
+      tanggalLahir: "",
+      alamat: dataPewaris.alamat || "",
+      nik: "",
+      pekerjaan: "",
+      agama: dataPewaris.agama || "",
+      jenisKelamin: "LAKI-LAKI",
+      statusPernikahan: "BELUM_MENIKAH",
+      hubungan: "ANAK" as const,
+      statusHidup: "HIDUP",
+      memilikiKeturunan: false,
+      keterangan,
+      asalIstri: kondisi === "kondisi4" ? asalIstri : undefined,
+    });
   };
 
   const tambahSaudara = () => {
@@ -186,37 +208,52 @@ export default function AhliWarisForm({ form }: Props) {
     tambahData("CUCU", "Cucu Pewaris");
   };
 
-  const tambahIstri = () => {
+  const tambahIstri = (urutan: number = 1) => {
     if (dataPewaris?.jenisKelamin === "LAKI-LAKI") {
-      const istriCount =
-        ahliWaris.filter((a: DataKeluargaType) => a.hubungan === "ISTRI")
-          .length + 1;
-      if (istriCount <= 2) {
-        tambahData("ISTRI", `Istri ${istriCount}`, "PEREMPUAN", "MENIKAH");
-      }
+      const keterangan = urutan === 1 ? "Istri Pertama" : "Istri Kedua";
+      append({
+        nama: "",
+        namaAyah: "",
+        tempatLahir: "",
+        tanggalLahir: "",
+        alamat: dataPewaris.alamat || "",
+        nik: "",
+        pekerjaan: "",
+        agama: dataPewaris.agama || "",
+        jenisKelamin: "PEREMPUAN",
+        statusPernikahan: "MENIKAH",
+        hubungan: "ISTRI" as const,
+statusHidup: "HIDUP",  
+        memilikiKeturunan: false,
+        keterangan,
+        urutan,
+        asalIstri: urutan === 1 ? "PERTAMA" : "KEDUA",
+      });
     }
+  };
+
+  /* =====================================================
+     FUNGSI UNTUK MENGATUR STATUS HIDUP
+  ===================================================== */
+  const toggleStatusHidup = (index: number) => {
+    const currentValue = form.getValues(`ahliWaris.${index}.statusHidup`);
+    form.setValue(`ahliWaris.${index}.statusHidup`, currentValue === "HIDUP" ? "MENINGGAL" : "HIDUP");
+  };
+
+  const toggleMemilikiKeturunan = (index: number) => {
+    const currentValue = form.getValues(`ahliWaris.${index}.memilikiKeturunan`);
+    form.setValue(`ahliWaris.${index}.memilikiKeturunan`, !currentValue);
   };
 
   /* =====================================================
      LOGIKA TOMBOL TAMBAH BERDASARKAN KONDISI
   ===================================================== */
-
   // Hitung jumlah berdasarkan kondisi saat ini
-  const istriList = ahliWaris.filter(
-    (item: DataKeluargaType) => item.hubungan === "ISTRI",
-  );
-  const suamiList = ahliWaris.filter(
-    (item: DataKeluargaType) => item.hubungan === "SUAMI",
-  );
-  const anakList = ahliWaris.filter(
-    (item: DataKeluargaType) => item.hubungan === "ANAK",
-  );
-  const saudaraList = ahliWaris.filter(
-    (item: DataKeluargaType) => item.hubungan === "SAUDARA",
-  );
-  const cucuList = ahliWaris.filter(
-    (item: DataKeluargaType) => item.hubungan === "CUCU",
-  );
+  const istriList = ahliWaris.filter((item) => item.hubungan === "ISTRI");
+  const suamiList = ahliWaris.filter((item) => item.hubungan === "SUAMI");
+  const anakList = ahliWaris.filter((item) => item.hubungan === "ANAK");
+  const saudaraList = ahliWaris.filter((item) => item.hubungan === "SAUDARA");
+  const cucuList = ahliWaris.filter((item) => item.hubungan === "CUCU");
 
   // Tentukan tombol mana yang harus ditampilkan berdasarkan kondisi
   const showTambahIstri =
@@ -241,17 +278,12 @@ export default function AhliWarisForm({ form }: Props) {
   const showTambahCucu = kondisi === "kondisi3";
 
   /* =====================================================
-     VALIDATION WARNING
-  ===================================================== */
-  const showValidationWarning = errors.ahliWaris || errors.dataPewaris;
-
-  /* =====================================================
      RENDER UTAMA
   ===================================================== */
   return (
     <div className="space-y-6">
       {/* Validation Warning */}
-      {showValidationWarning && (
+      {errors.ahliWaris || errors.dataPewaris ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -259,7 +291,7 @@ export default function AhliWarisForm({ form }: Props) {
               "Ada data yang belum lengkap. Harap periksa semua field yang diperlukan."}
           </AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
       {/* Header dengan statistik */}
       <Card>
@@ -289,6 +321,7 @@ export default function AhliWarisForm({ form }: Props) {
             {istriList.length > 0 && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700">
                 {istriList.length} Istri
+                {kondisi === "kondisi4" && " (2 Istri)"}
               </Badge>
             )}
             {suamiList.length > 0 && (
@@ -299,6 +332,7 @@ export default function AhliWarisForm({ form }: Props) {
             {anakList.length > 0 && (
               <Badge variant="outline" className="bg-green-50 text-green-700">
                 {anakList.length} Anak
+                {anakList.some(a => a.statusHidup === "MENINGGAL") && " (termasuk almarhum)"}
               </Badge>
             )}
             {saudaraList.length > 0 && (
@@ -313,12 +347,53 @@ export default function AhliWarisForm({ form }: Props) {
             )}
           </div>
 
-          {/* Instruction */}
+          {/* Instruction berdasarkan kondisi */}
           <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
-            <p className="text-gray-600">
-              <strong>Petunjuk:</strong> Isi semua field yang ada di bawah.
-              Field dengan tanda * wajib diisi.
+            <p className="text-gray-600 mb-2">
+              <strong>Petunjuk Pengisian untuk {getKondisiLabel(kondisi)}:</strong>
             </p>
+            {kondisi === "kondisi1" && (
+              <ul className="list-disc pl-4 text-gray-600">
+                <li>Semua anak harus masih hidup (centang Masih Hidup)</li>
+                <li>Anak tidak boleh memiliki keturunan</li>
+              </ul>
+            )}
+            {kondisi === "kondisi2" && (
+              <ul className="list-disc pl-4 text-gray-600">
+                <li>Harus ada minimal 1 anak yang meninggal (hapus centang Masih Hidup)</li>
+                <li>Anak yang meninggal tidak boleh memiliki keturunan</li>
+              </ul>
+            )}
+            {kondisi === "kondisi3" && (
+              <ul className="list-disc pl-4 text-gray-600">
+                <li>Harus ada anak yang meninggal</li>
+                <li>Anak yang meninggal harus memiliki keturunan (cucu)</li>
+                <li>Tambahkan cucu dengan tombol Tambah Cucu</li>
+              </ul>
+            )}
+            {kondisi === "kondisi4" && (
+              <ul className="list-disc pl-4 text-gray-600">
+                <li>Pewaris memiliki 2 istri</li>
+                <li>Pastikan setiap anak memiliki asal istri yang benar</li>
+              </ul>
+            )}
+            {kondisi === "kondisi5" && (
+              <ul className="list-disc pl-4 text-gray-600">
+                <li>Suami harus masih hidup</li>
+                <li>Semua anak harus masih hidup</li>
+              </ul>
+            )}
+            {kondisi === "kondisi6" && (
+              <p className="text-gray-600">
+                Pewaris tidak memiliki keturunan. Tidak perlu menambahkan ahli waris.
+              </p>
+            )}
+            {kondisi === "kondisi7" && (
+              <ul className="list-disc pl-4 text-gray-600">
+                <li>Pewaris hanya memiliki saudara kandung</li>
+                <li>Tidak ada istri/suami/anak/cucu</li>
+              </ul>
+            )}
           </div>
 
           {/* Tombol tambah berdasarkan kondisi */}
@@ -327,12 +402,12 @@ export default function AhliWarisForm({ form }: Props) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={tambahIstri}
+                onClick={() => tambahIstri(istriList.length + 1)}
                 className="border-blue-300 text-blue-600"
                 disabled={istriList.length >= 2}
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Tambah Istri (Maks: 2)
+                Tambah Istri {istriList.length > 0 ? `(${istriList.length + 1})` : ""}
               </Button>
             )}
 
@@ -346,14 +421,14 @@ export default function AhliWarisForm({ form }: Props) {
                     namaAyah: "",
                     tempatLahir: "",
                     tanggalLahir: "",
-                    alamat: "",
+                    alamat: dataPewaris.alamat || "",
                     nik: "",
                     pekerjaan: "",
-                    agama: "",
+                    agama: dataPewaris.agama || "",
                     jenisKelamin: "LAKI-LAKI",
                     statusPernikahan: "MENIKAH",
                     hubungan: "SUAMI",
-                    masihHidup: true,
+                    statusHidup: "HIDUP",
                     memilikiKeturunan: false,
                     keterangan: "Suami Pewaris",
                   });
@@ -388,6 +463,34 @@ export default function AhliWarisForm({ form }: Props) {
                 Tambah Cucu
               </Button>
             )}
+
+            {/* Tombol tambah anak (selalu muncul untuk kondisi yang memerlukan anak) */}
+            {showTambahAnak && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => tambahAnak("PERTAMA")}
+                  className="border-green-300 text-green-600"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Anak
+                </Button>
+                
+                {/* Untuk kondisi 4, tampilkan tombol tambah anak untuk istri kedua */}
+                {kondisi === "kondisi4" && istriList.length >= 2 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => tambahAnak("KEDUA")}
+                    className="border-green-300 text-green-600"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Anak (Istri Kedua)
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -397,7 +500,7 @@ export default function AhliWarisForm({ form }: Props) {
         {/* Istri/Suami */}
         {ahliWaris
           .filter(
-            (item) => item.hubungan === "ISTRI" || item.hubungan === "SUAMI",
+            (item) => item.hubungan === "ISTRI" || item.hubungan === "SUAMI"
           )
           .map((item, index) => {
             const originalIndex = ahliWaris.findIndex((f) => f === item);
@@ -418,7 +521,8 @@ export default function AhliWarisForm({ form }: Props) {
                         <>
                           <Users className="w-5 h-5 mr-2" />
                           {item.keterangan || `Istri ${index + 1}`}
-                          {!item.masihHidup && (
+                          {item.urutan && ` (Istri ke-${item.urutan})`}
+                          {item.statusHidup === "MENINGGAL" && (
                             <Badge
                               variant="destructive"
                               className="ml-2 text-xs"
@@ -431,7 +535,7 @@ export default function AhliWarisForm({ form }: Props) {
                         <>
                           <Users className="w-5 h-5 mr-2" />
                           {item.keterangan || "Suami Pewaris"}
-                          {!item.masihHidup && (
+                          {item.statusHidup === "MENINGGAL" && (
                             <Badge
                               variant="destructive"
                               className="ml-2 text-xs"
@@ -443,25 +547,30 @@ export default function AhliWarisForm({ form }: Props) {
                       )}
                     </CardTitle>
                     <div className="flex gap-2">
-                      {/* Tombol tambah anak hanya untuk istri/suami yang masih hidup */}
-                      {(isIstri || item.hubungan === "SUAMI") &&
-                        item.masihHidup &&
-                        showTambahAnak && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => tambahAnak(index + 1)}
-                            className={
-                              isIstri
-                                ? "border-blue-300 text-blue-600 hover:bg-blue-50"
-                                : "border-purple-300 text-purple-600 hover:bg-purple-50"
-                            }
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Tambah Anak
-                          </Button>
+                      {/* Status hidup toggle */}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={item.statusHidup === "HIDUP" ? "outline" : "destructive"}
+                        onClick={() => toggleStatusHidup(originalIndex)}
+                        className={item.statusHidup === "HIDUP" ? 
+                          "border-green-300 text-green-600 hover:bg-green-50" : 
+                          "bg-red-100 text-red-700 hover:bg-red-200"
+                        }
+                      >
+                        {item.statusHidup === "HIDUP" ? (
+                          <>
+                            <ChevronUp className="w-4 h-4 mr-1" />
+                            Hidup
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4 mr-1" />
+                            Meninggal
+                          </>
                         )}
+                      </Button>
+
                       {ahliWaris.length > 1 && (
                         <Button
                           type="button"
@@ -485,11 +594,14 @@ export default function AhliWarisForm({ form }: Props) {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <FormKeluarga
-                    form={form}
-                    index={originalIndex}
-                    hubunganDefault={item.hubungan}
-                  />
+                  <div className="mb-4">
+                    <FormKeluarga
+                      form={form}
+                      index={originalIndex}
+                      hubunganDefault={item.hubungan}
+                      showKeterangan={false} // Sembunyikan keterangan karena sudah ada di header
+                    />
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -503,18 +615,35 @@ export default function AhliWarisForm({ form }: Props) {
                 <CardTitle className="flex items-center text-green-700">
                   <Users className="w-5 h-5 mr-2" />
                   Anak-anak Pewaris ({anakList.length} orang)
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    ({anakList.filter(a => a.statusHidup === "HIDUP").length} hidup, {anakList.filter(a => a.statusHidup === "MENINGGAL").length} meninggal)
+                  </span>
                 </CardTitle>
                 {showTambahAnak && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => tambahAnak(1)}
-                    className="border-green-300 text-green-600 hover:bg-green-50"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Tambah Anak
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => tambahAnak("PERTAMA")}
+                      className="border-green-300 text-green-600 hover:bg-green-50"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Tambah Anak
+                    </Button>
+                    {kondisi === "kondisi4" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => tambahAnak("KEDUA")}
+                        className="border-green-300 text-green-600 hover:bg-green-50"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Anak (Istri 2)
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </CardHeader>
@@ -523,36 +652,101 @@ export default function AhliWarisForm({ form }: Props) {
                 {anakList.map((item, index) => {
                   const originalIndex = ahliWaris.findIndex((f) => f === item);
                   const fieldErrors = errors.ahliWaris?.[originalIndex];
+                  const isAlmarhum = item.statusHidup === "MENINGGAL";
 
                   return (
                     <div
                       key={`anak-${index}-${originalIndex}`}
-                      className="border rounded-lg p-4 bg-white"
+                      className={`border rounded-lg p-4 ${isAlmarhum ? 'bg-red-50 border-red-200' : 'bg-white border-green-200'}`}
                     >
                       <div className="flex justify-between items-center mb-4">
-                        <div>
-                          <h4 className="font-medium">
-                            Anak {index + 1}{" "}
-                            {item.keterangan && `(${item.keterangan})`}
-                          </h4>
-                          {fieldErrors && (
-                            <div className="text-xs text-red-600 mt-1">
-                              <AlertCircle className="inline w-3 h-3 mr-1" />
-                              Periksa data
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <h4 className="font-medium">
+                              Anak {index + 1}
+                              {item.keterangan && ` - ${item.keterangan}`}
+                              {item.asalIstri && ` (${item.asalIstri === "PERTAMA" ? "Istri Pertama" : "Istri Kedua"})`}
+                            </h4>
+                            {fieldErrors && (
+                              <div className="text-xs text-red-600 mt-1">
+                                <AlertCircle className="inline w-3 h-3 mr-1" />
+                                Periksa data
+                              </div>
+                            )}
+                          </div>
+                          {isAlmarhum && (
+                            <Badge variant="destructive" className="text-xs">
+                              Almarhum/Almarhumah
+                            </Badge>
                           )}
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => remove(originalIndex)}
-                          className="hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Hapus Anak
-                        </Button>
+                        <div className="flex gap-2">
+                          {/* Toggle status hidup */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={item.statusHidup === "HIDUP" ? "outline" : "destructive"}
+                            onClick={() => toggleStatusHidup(originalIndex)}
+                            className={item.statusHidup === "HIDUP" ? 
+                              "border-green-300 text-green-600 hover:bg-green-50" : 
+                              "bg-red-100 text-red-700 hover:bg-red-200"
+                            }
+                          >
+                            {item.statusHidup === "HIDUP" ? "Hidup" : "Meninggal"}
+                          </Button>
+
+                          {/* Toggle memiliki keturunan (hanya untuk anak yang meninggal) */}
+                          {item.statusHidup === "MENINGGAL" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={item.memilikiKeturunan ? "outline" : "secondary"}
+                              onClick={() => toggleMemilikiKeturunan(originalIndex)}
+                              className={item.memilikiKeturunan ? 
+                                "border-cyan-300 text-cyan-600 hover:bg-cyan-50" : 
+                                "border-gray-300 text-gray-600 hover:bg-gray-50"
+                              }
+                            >
+                              {item.memilikiKeturunan ? "Punya Keturunan" : "Tidak Punya Keturunan"}
+                            </Button>
+                          )}
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => remove(originalIndex)}
+                            className="hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Hapus
+                          </Button>
+                        </div>
                       </div>
+                      
+                      {/* Untuk kondisi 4, pilih asal istri */}
+                      {kondisi === "kondisi4" && (
+                        <div className="mb-4 p-3 bg-blue-50 rounded">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Asal Istri
+                          </label>
+                          <Select
+                            value={item.asalIstri || "PERTAMA"}
+                            onValueChange={(value) => 
+                              form.setValue(`ahliWaris.${originalIndex}.asalIstri`, value as "PERTAMA" | "KEDUA")
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Pilih asal istri" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="PERTAMA">Istri Pertama</SelectItem>
+                              <SelectItem value="KEDUA">Istri Kedua</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
                       <FormKeluarga
                         form={form}
                         index={originalIndex}
@@ -610,18 +804,32 @@ export default function AhliWarisForm({ form }: Props) {
                             </div>
                           )}
                         </div>
-                        {saudaraList.length > 1 && (
+                        <div className="flex gap-2">
                           <Button
                             type="button"
                             size="sm"
-                            variant="destructive"
-                            onClick={() => remove(originalIndex)}
-                            className="hover:bg-red-50"
+                            variant={item.statusHidup === "HIDUP" ? "outline" : "destructive"}
+                            onClick={() => toggleStatusHidup(originalIndex)}
+                            className={item.statusHidup === "HIDUP" ? 
+                              "border-green-300 text-green-600 hover:bg-green-50" : 
+                              "bg-red-100 text-red-700 hover:bg-red-200"
+                            }
                           >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Hapus
+                            {item.statusHidup === "HIDUP" ? "Hidup" : "Meninggal"}
                           </Button>
-                        )}
+                          {saudaraList.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => remove(originalIndex)}
+                              className="hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Hapus
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <FormKeluarga
                         form={form}
@@ -680,16 +888,30 @@ export default function AhliWarisForm({ form }: Props) {
                             </div>
                           )}
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => remove(originalIndex)}
-                          className="hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Hapus
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={item.statusHidup === "HIDUP" ? "outline" : "destructive"}
+                            onClick={() => toggleStatusHidup(originalIndex)}
+                            className={item.statusHidup === "HIDUP" ? 
+                              "border-green-300 text-green-600 hover:bg-green-50" : 
+                              "bg-red-100 text-red-700 hover:bg-red-200"
+                            }
+                          >
+                            {item.statusHidup === "HIDUP" ? "Hidup" : "Meninggal"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => remove(originalIndex)}
+                            className="hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Hapus
+                          </Button>
+                        </div>
                       </div>
                       <FormKeluarga
                         form={form}
@@ -704,13 +926,23 @@ export default function AhliWarisForm({ form }: Props) {
           </Card>
         )}
 
-        {/* Empty state jika belum ada ahli waris (kecuali kondisi 6) */}
-        {ahliWaris.length === 0 && (
+        {/* Empty state jika belum ada ahli waris */}
+        {ahliWaris.length === 0 && kondisi !== "kondisi6" && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Belum ada ahli waris yang ditambahkan. Klik tombol Tambah
-              Istri/Suami di atas untuk memulai.
+              Belum ada ahli waris yang ditambahkan. Klik tombol Tambah Istri/Suami di atas untuk memulai.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Khusus kondisi 6 */}
+        {kondisi === "kondisi6" && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Kondisi 6: Pewaris tidak memiliki keturunan.</strong> 
+              Tidak perlu menambahkan ahli waris untuk kondisi ini.
             </AlertDescription>
           </Alert>
         )}

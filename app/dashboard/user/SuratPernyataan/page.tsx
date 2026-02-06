@@ -7,13 +7,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/Form"; // Pastikan ini diimpor dengan benar
-import DownloadPDFButton from "./components/DownloadPDFButton";
 import Header from "./components/Header";
 import KondisiSelector from "./components/KondisiSelector";
 import DataPewarisForm from "./components/DataPewarisForm";
 import AhliWarisForm from "./components/AhliWarisForm";
-import { formSchema } from "./constants/schemas";
-import { defaultDataPewaris } from "./constants/defaultValues";
+import { defaultDataPewaris, formSchema } from "./constants/schemas";
 import { FormValues } from "./types";
 
 export default function FormPernyataanWarisan() {
@@ -26,7 +24,7 @@ export default function FormPernyataanWarisan() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      kondisi: undefined,
+      kondisi: "kondisi1",
       dataPewaris: defaultDataPewaris,
       ahliWaris: [],
       tambahanKeterangan: "",
@@ -38,6 +36,7 @@ export default function FormPernyataanWarisan() {
   const formValues = form.watch(); // Watch semua nilai form
 
   const handleSave = async () => {
+    let submissionId: string | null = null;
     try {
       setIsSaving(true);
       setSaveError(null);
@@ -62,14 +61,14 @@ export default function FormPernyataanWarisan() {
           body: JSON.stringify(data),
         });
 
-        const text = await response.text();
-        const result = text ? JSON.parse(text) : null;
+        const result = await response.json();
 
         if (!response.ok) {
           console.error("Error response dari server:", result);
           throw new Error(`HTTP ${response.status}: ${JSON.stringify(result)}`);
         }
 
+        submissionId = result?.data?.id || result?.pengajuanId || null;
         console.log("Data saved to database:", result);
       } catch (dbError) {
         console.warn(
@@ -83,7 +82,13 @@ export default function FormPernyataanWarisan() {
       setSaveSuccess(true);
 
       // Reset success message setelah 3 detik
-      setTimeout(() => setSaveSuccess(false), 3000);
+      if (submissionId) {
+        setTimeout(() => {
+          router.push(
+            `/dashboard/user/SuratPernyataan/progress?pengajuanId=${submissionId}`,
+          );
+        }, 2000);
+      }
     } catch (error) {
       console.error("Error Details:", error);
       setSaveError(
@@ -176,8 +181,7 @@ export default function FormPernyataanWarisan() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm font-medium text-green-800">
-                      Data berhasil disimpan! Sekarang Anda dapat mendownload
-                      PDF.
+                      Data berhasil disimpan!
                     </p>
                   </div>
                 </div>
@@ -241,68 +245,6 @@ export default function FormPernyataanWarisan() {
                   )}
                 </Button>
               </div>
-
-              {/* Download PDF Button */}
-              {formData && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium text-blue-900">
-                        Download Dokumen
-                      </h3>
-                      <p className="text-sm text-blue-700">
-                        Data sudah tersimpan. Klik tombol di bawah untuk
-                        mendownload Surat Pernyataan dalam format PDF.
-                      </p>
-                    </div>
-                    <DownloadPDFButton
-                      data={formData}
-                      disabled={!isFormValid()}
-                      onSuccess={() => {
-                        console.log("PDF berhasil diunduh");
-                      }}
-                      onError={(error) => {
-                        console.error("Download error:", error);
-                        setSaveError("Gagal mengunduh PDF. Silakan coba lagi.");
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {!formData && kondisi && (
-                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-yellow-400"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-yellow-800">
-                        Perhatian
-                      </h3>
-                      <div className="mt-2 text-sm text-yellow-700">
-                        <p>
-                          Klik{" "}
-                          <strong className="font-semibold">Simpan Data</strong>{" "}
-                          terlebih dahulu untuk validasi data. Setelah data
-                          berhasil disimpan, tombol download PDF akan muncul di
-                          sini.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </form>
         </Form>

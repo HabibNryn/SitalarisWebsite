@@ -1,524 +1,401 @@
 // app/dashboard/admin/submissions/[id]/page.tsx
-"use client";
-
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { notFound } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/auth/auth-options';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   ArrowLeft,
   Download,
-  Printer,
-  Mail,
+  Eye,
+  FileText,
+  User,
+  Calendar,
+  MapPin,
+  Home,
+  Shield,
   CheckCircle,
   XCircle,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { id } from "date-fns/locale";
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
+import Link from 'next/link';
 
-interface AhliWaris {
-  hubungan: string;
-  masihHidup: boolean;
-  nama: string;
-  namaAyah: string | null;
-  tempatLahir: string;
-  tanggalLahir: string;
-  nik: string | null;
-  pekerjaan: string | null;
-  agama: string | null;
-  alamat: string | null;
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
-interface SubmissionDetail {
-  id: string;
-  nomorSurat: string;
-  kondisi: string;
-  dataPewaris: {
-    nama: string;
-    namaAyah: string | null;
-    nik: string;
-    tempatLahir: string;
-    tanggalLahir: string;
-    tempatMeninggal: string;
-    tanggalMeninggal: string;
-    alamat: string;
-    nomorAkteKematian: string | null;
-    jenisKelamin: string;
-  };
-  ahliWaris: AhliWaris[];
-  tambahanKeterangan: string;
-  status: string;
-  createdAt: string;
-  reviewedAt: string | null;
-  reviewNotes: string | null;
-  pdfUrl: string | null;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
+export default async function SubmissionDetailPage({ params }: PageProps) {
+  // Unwrap params yang berupa Promise
+  const { id } = await params;
+  
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user?.id) {
+    return notFound();
+  }
+  
+  // Ambil data submission dari database
+  const submission = await prisma.suratPernyataan.findUnique({
+    where: { id },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      documentLogs: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      },
+    },
+  });
+  
+  if (!submission) {
+    return notFound();
+  }
+  
+  // Parse data JSON jika perlu
+  const dataPewaris = typeof submission.dataPewaris === 'string' 
+    ? JSON.parse(submission.dataPewaris) 
+    : submission.dataPewaris;
+  
+  const ahliWaris = typeof submission.ahliWaris === 'string'
+    ? JSON.parse(submission.ahliWaris)
+    : submission.ahliWaris;
 
-export default function SubmissionDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [submission, setSubmission] = useState<SubmissionDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchSubmissionDetail();
-  }, [params.id]);
-
-  const fetchSubmissionDetail = async () => {
-    try {
-      const response = await fetch(`/api/admin/submissions/${params.id}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setSubmission(data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch submission detail:", error);
-    } finally {
-      setLoading(false);
-    }
+  type AhliWarisItem = {
+    nama?: string;
+    hubungan?: string;
+    statusHidup?: string;
+    tempatLahir?: string;
+    tanggalLahir?: string;
+    pekerjaan?: string;
+    nik?: string;
+    keterangan?: string;
   };
 
-  const handleApprove = async () => {
-    if (!confirm("Apakah Anda yakin ingin menyetujui surat pernyataan ini?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `/api/admin/submissions/${params.id}/approve`,
-        {
-          method: "POST",
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert("Surat pernyataan berhasil disetujui");
-        fetchSubmissionDetail();
-        router.push("/dashboard/admin/submissions");
-      }
-    } catch (error) {
-      console.error("Approve error:", error);
-      alert("Terjadi kesalahan saat menyetujui surat pernyataan");
-    }
-  };
-
-  const handleReject = async () => {
-    const reason = prompt("Masukkan alasan penolakan:");
-    if (!reason) return;
-
-    try {
-      const response = await fetch(
-        `/api/admin/submissions/${params.id}/reject`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ reason }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert("Surat pernyataan berhasil ditolak");
-        fetchSubmissionDetail();
-        router.push("/dashboard/admin/submissions");
-      }
-    } catch (error) {
-      console.error("Reject error:", error);
-      alert("Terjadi kesalahan saat menolak surat pernyataan");
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "dd MMMM yyyy HH:mm", { locale: id });
-    } catch {
-      return dateString;
-    }
-  };
-
+  const ahliWarisList: AhliWarisItem[] = Array.isArray(ahliWaris)
+    ? (ahliWaris as AhliWarisItem[])
+    : [];
+  
+  // Helper untuk badge status
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      PENDING: "bg-yellow-100 text-yellow-800",
-      UNDER_REVIEW: "bg-blue-100 text-blue-800",
-      APPROVED: "bg-green-100 text-green-800",
-      REJECTED: "bg-red-100 text-red-800",
+      'DRAFT': 'bg-gray-100 text-gray-800',
+      'SUBMITTED': 'bg-blue-50 text-blue-700',
+      'VERIFIED': 'bg-purple-50 text-purple-700',
+      'APPROVED': 'bg-green-50 text-green-700',
+      'REJECTED': 'bg-red-50 text-red-700',
     };
-
+    
+    const labels: Record<string, string> = {
+      'DRAFT': 'Draft',
+      'SUBMITTED': 'Submitted',
+      'VERIFIED': 'Verified',
+      'APPROVED': 'Disetujui',
+      'REJECTED': 'Ditolak',
+    };
+    
     return (
-      <Badge className={`${colors[status] || ""} text-sm`}>
-        {status === "PENDING"
-          ? "Menunggu Review"
-          : status === "UNDER_REVIEW"
-            ? "Dalam Review"
-            : status === "APPROVED"
-              ? "Disetujui"
-              : status === "REJECTED"
-                ? "Ditolak"
-                : status}
+      <Badge className={`${colors[status] || 'bg-gray-100'} px-3 py-1 font-medium`}>
+        {labels[status] || status}
       </Badge>
     );
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!submission) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Data tidak ditemukan</p>
-        <Button
-          variant="outline"
-          className="mt-4"
-          onClick={() => router.push("/dashboard/admin/submissions")}
-        >
-          Kembali ke Daftar
-        </Button>
-      </div>
-    );
-  }
-
+  
+  // Format tanggal
+  const formatDate = (dateString: string | Date | null) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+  
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
+    <div className="container mx-auto py-8 px-4">
+      {/* Header dengan tombol kembali */}
       <div className="mb-8">
-        <Button
-          variant="ghost"
-          className="mb-4"
-          onClick={() => router.push("/dashboard/admin/submissions")}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Kembali
-        </Button>
-
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
               Detail Surat Pernyataan
             </h1>
-            <p className="text-gray-600 mt-2">Nomor: {submission.nomorSurat}</p>
+            <p className="text-gray-600 mt-2">
+              Nomor: <span className="font-mono font-semibold">{submission.nomorSurat}</span>
+            </p>
           </div>
-
-          <div className="flex items-center space-x-2">
-            {getStatusBadge(submission.status)}
-            {submission.pdfUrl && (
-              <Button
-                variant="outline"
-                onClick={() => window.open(submission.pdfUrl!, "_blank")}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Lihat PDF
-              </Button>
-            )}
-          </div>
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/admin/submissions">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Kembali ke Daftar
+            </Link>
+          </Button>
         </div>
       </div>
-
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
+        {/* Kolom kiri: Informasi utama */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Data Pewaris */}
+          {/* Card: Status dan Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Data Pewaris</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Status dan Informasi
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Nama Lengkap</p>
-                    <p className="font-medium">{submission.dataPewaris.nama}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Nama Ayah</p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.namaAyah || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">NIK</p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.nik || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Tempat/Tanggal Lahir
-                    </p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.tempatLahir},{" "}
-                      {formatDate(submission.dataPewaris.tanggalLahir)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Tempat/Tanggal Meninggal
-                    </p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.tempatMeninggal},{" "}
-                      {formatDate(submission.dataPewaris.tanggalMeninggal)}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Alamat</p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.alamat}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Nomor Akta Kematian</p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.nomorAkteKematian || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Jenis Kelamin</p>
-                    <p className="font-medium">
-                      {submission.dataPewaris.jenisKelamin === "LAKI-LAKI"
-                        ? "Laki-laki"
-                        : "Perempuan"}
-                    </p>
-                  </div>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <div className="mt-1">{getStatusBadge(submission.status)}</div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Kondisi</p>
+                  <p className="mt-1 font-medium">{submission.kondisi}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Tanggal Pengajuan</p>
+                  <p className="mt-1 font-medium">{formatDate(submission.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Tanggal Review</p>
+                  <p className="mt-1 font-medium">{formatDate(submission.reviewedAt)}</p>
+                </div>
+              </div>
+              
+              {submission.catatan && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm font-medium text-yellow-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Catatan:
+                  </p>
+                  <p className="text-sm text-yellow-700 mt-1">{submission.catatan}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Card: Data Pewaris */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Data Pewaris
+              </CardTitle>
+              <CardDescription>
+                Informasi lengkap tentang almarhum/almahrum
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Nama Lengkap</p>
+                  <p className="mt-1 font-medium">{dataPewaris.nama || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Nama Ayah</p>
+                  <p className="mt-1 font-medium">{dataPewaris.namaAyah || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Tempat/Tanggal Lahir</p>
+                  <p className="mt-1 font-medium">
+                    {dataPewaris.tempatLahir || '-'}, {dataPewaris.tanggalLahir 
+                      ? formatDate(dataPewaris.tanggalLahir) 
+                      : '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Tanggal Meninggal</p>
+                  <p className="mt-1 font-medium">
+                    {dataPewaris.tanggalMeninggal 
+                      ? formatDate(dataPewaris.tanggalMeninggal) 
+                      : '-'}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-500">Alamat</p>
+                  <p className="mt-1 font-medium">{dataPewaris.alamat || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Agama</p>
+                  <p className="mt-1 font-medium">{dataPewaris.agama || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Pekerjaan</p>
+                  <p className="mt-1 font-medium">{dataPewaris.pekerjaan || '-'}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          {/* Data Ahli Waris */}
+          
+          {/* Card: Ahli Waris */}
           <Card>
             <CardHeader>
-              <CardTitle>Data Ahli Waris</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Home className="h-5 w-5" />
+                Daftar Ahli Waris
+              </CardTitle>
+              <CardDescription>
+                {ahliWaris.length} orang ahli waris
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {submission.ahliWaris.map((ahli, index) => (
+              <div className="space-y-4">
+                {ahliWarisList.map((ahli, index) => (
                   <div key={index} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold">
-                        {ahli.hubungan === "ISTRI"
-                          ? "Istri"
-                          : ahli.hubungan === "SUAMI"
-                            ? "Suami"
-                            : ahli.hubungan === "ANAK"
-                              ? `Anak ${index + 0}`
-                              : ahli.hubungan === "SAUDARA"
-                                ? "Saudara Kandung"
-                                : ahli.hubungan}
-                      </h3>
-                      <span className="text-sm text-gray-500">
-                        {ahli.masihHidup ? "Masih Hidup" : "Almarhum"}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-gray-500">Nama</p>
-                        <p className="font-medium">{ahli.nama}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Nama Ayah</p>
-                        <p className="font-medium">{ahli.namaAyah || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Tempat/Tgl Lahir</p>
-                        <p className="font-medium">
-                          {ahli.tempatLahir}, {formatDate(ahli.tanggalLahir)}
+                        <p className="font-medium flex items-center gap-2">
+                          {ahli.nama || 'Tidak diketahui'}
+                          <Badge variant="outline">{ahli.hubungan}</Badge>
+                          {ahli.statusHidup === 'MENINGGAL' && (
+                            <Badge variant="destructive" className="text-xs">
+                              Meninggal
+                            </Badge>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {ahli.tempatLahir || '-'}, {ahli.tanggalLahir 
+                            ? formatDate(ahli.tanggalLahir) 
+                            : '-'}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-gray-500">NIK</p>
-                        <p className="font-medium">{ahli.nik || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Pekerjaan</p>
-                        <p className="font-medium">{ahli.pekerjaan || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Agama</p>
-                        <p className="font-medium">{ahli.agama || "-"}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-gray-500">Alamat</p>
-                        <p className="font-medium">{ahli.alamat || "-"}</p>
+                      <div className="text-right">
+                        <p className="text-sm">{ahli.pekerjaan || '-'}</p>
+                        <p className="text-xs text-gray-500">NIK: {ahli.nik || '-'}</p>
                       </div>
                     </div>
+                    {ahli.keterangan && (
+                      <p className="text-sm text-gray-600 mt-2">{ahli.keterangan}</p>
+                    )}
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-
-          {/* Keterangan Tambahan */}
-          {submission.tambahanKeterangan && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Keterangan Tambahan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {submission.tambahanKeterangan}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Review Notes */}
-          {submission.reviewNotes && (
-            <Card className="border-red-200 bg-red-50">
-              <CardHeader>
-                <CardTitle className="text-red-700">Catatan Review</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-red-700 whitespace-pre-wrap">
-                  {submission.reviewNotes}
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
-
-        {/* Sidebar */}
+        
+        {/* Kolom kanan: Sidebar */}
         <div className="space-y-6">
-          {/* User Info */}
+          {/* Card: Pengguna */}
           <Card>
             <CardHeader>
-              <CardTitle>Informasi Pengguna</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Pengguna
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-500">Nama</p>
-                  <p className="font-medium">
-                    {submission.user.name || "Tidak ada nama"}
-                  </p>
+                  <p className="font-medium">{submission.user.name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Email</p>
                   <p className="font-medium">{submission.user.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Tanggal Pengajuan</p>
-                  <p className="font-medium">
-                    {formatDate(submission.createdAt)}
-                  </p>
+                  <p className="text-sm text-gray-500">User ID</p>
+                  <p className="font-mono text-sm">{submission.user.id}</p>
                 </div>
-                {submission.reviewedAt && (
-                  <div>
-                    <p className="text-sm text-gray-500">Tanggal Review</p>
-                    <p className="font-medium">
-                      {formatDate(submission.reviewedAt)}
-                    </p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
-
-          {/* Actions */}
-          {submission.status === "PENDING" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Aksi</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button
-                    className="w-full bg-green-600 hover:bg-green-700"
-                    onClick={handleApprove}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Setujui & Kirim Email
-                  </Button>
-
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleReject}
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Tolak Pengajuan
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* PDF Actions */}
-          {submission.pdfUrl && (
-            <Card>
-              <CardHeader>
-                <CardTitle>File PDF</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => window.open(submission.pdfUrl!, "_blank")}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Lihat PDF
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = submission.pdfUrl!;
-                      link.download = `surat-pernyataan-${submission.nomorSurat}.pdf`;
-                      link.click();
-                    }}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* System Info */}
+          
+          {/* Card: Aksi */}
           <Card>
             <CardHeader>
-              <CardTitle>Informasi Sistem</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Aksi
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                asChild
+              >
+                <Link href={`/api/admin/submissions/${id}/pdf/download`} target="_blank">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PDF
+                </Link>
+              </Button>
+              
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                asChild
+              >
+                <Link href={`/api/admin/submissions/${id}/pdf/preview`} target="_blank">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview PDF
+                </Link>
+              </Button>
+              
+              {submission.status === 'SUBMITTED' && (
+                <>
+                  <Button 
+                    className="w-full justify-start bg-green-600 hover:bg-green-700"
+                    onClick={async () => {
+                      'use server';
+                      // Aksi approve
+                    }}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Setujui
+                  </Button>
+                  
+                  <Button 
+                    className="w-full justify-start bg-red-600 hover:bg-red-700"
+                    variant="destructive"
+                    onClick={async () => {
+                      'use server';
+                      // Aksi reject
+                    }}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Tolak
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Card: Activity Log */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Activity Log
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">ID</span>
-                  <span className="font-mono">
-                    {submission.id.substring(0, 8)}...
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Kondisi</span>
-                  <span>{submission.kondisi}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Jumlah Ahli Waris</span>
-                  <span>{submission.ahliWaris.length} orang</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">PDF Generated</span>
-                  <span>{submission.pdfUrl ? "Ya" : "Tidak"}</span>
-                </div>
+              <div className="space-y-3">
+                {submission.documentLogs.length > 0 ? (
+                  submission.documentLogs.map((log, index) => (
+                    <div key={index} className="text-sm">
+                      <p className="font-medium">{log.details}</p>
+                      <p className="text-gray-500 text-xs">
+                        {formatDate(log.createdAt)}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">Tidak ada log aktivitas</p>
+                )}
               </div>
             </CardContent>
           </Card>

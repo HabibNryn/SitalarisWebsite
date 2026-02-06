@@ -13,7 +13,9 @@ import {
   MoreVertical,
   ChevronLeft,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Input from '@/components/ui/input'
@@ -61,7 +63,10 @@ interface Submission {
   catatan?: string
   isGenerated?: boolean
   downloadCount?: number
+  dataPewaris?: Record<string, unknown>
+  ahliWaris?: Array<Record<string, unknown>>
 }
+
 
 export default function AdminSubmissionsPage() {
   const router = useRouter()
@@ -80,6 +85,8 @@ export default function AdminSubmissionsPage() {
   const [pageSize, setPageSize] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [previewingId, setPreviewingId] = useState<string | null>(null)
   
   // Debug: log untuk memastikan submission.id valid
   useEffect(() => {
@@ -210,17 +217,172 @@ export default function AdminSubmissionsPage() {
     window.open(pdfUrl, '_blank')
   }
   
-  const handleDownloadPDF = (pdfUrl: string, nomorSurat: string) => {
-    if (!pdfUrl) {
-      alert('URL PDF tidak valid')
+  // Fungsi untuk download PDF menggunakan API yang sudah ada
+  const handleDownloadPDF = async (submissionId: string, nomorSurat: string) => {
+    if (!submissionId) {
+      alert('ID surat tidak valid')
       return
     }
-    const link = document.createElement('a')
-    link.href = pdfUrl
-    link.download = `surat-pernyataan-${nomorSurat}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    
+    setDownloadingId(submissionId)
+    
+    try {
+      // Fetch data submission terlebih dahulu
+      console.log("Downoading Submissions:", submissionId)
+      const submissionResponse = await fetch(`/api/admin/submissions/${submissionId}`)
+      const submissionData = await submissionResponse.json()
+      console.log('Submission data for PDF download:', submissionData)
+      
+      if (!submissionData.success) {
+        throw new Error('Gagal mengambil data submission')
+      }
+      
+      const submission = submissionData.data
+      console.log('Submission rawData:', submission)
+
+          console.log('Found submission with data:', {
+      hasDataPewaris: !!submission.dataPewaris,
+      hasAhliWaris: !!submission.ahliWaris,
+      ahliWarisCount: submission.ahliWaris?.length || 0
+    });
+      
+      // Format data untuk PDF
+      if (!submission?.dataPewaris) {
+        throw new Error('Data pewaris tidak ditemukan')
+      }
+
+      const pdfData = {
+        dataPewaris: submission.data?.dataPewaris || submission.dataPewaris,
+        ahliWaris: submission.da || submission.ahliWaris,
+        kondisi: submission.data?.kondisi || submission.kondisi || "kondisi1",
+        tambahanKeterangan: submission.data?.tambahanKeterangan || submission.tambahanKeterangan || '',
+        
+
+        anakMeninggal: submission.data?.anakMeninggal || submission.anakMeninggal || []
+      }
+
+      console.log('PDF Data to send:', pdfData)
+      console.log('Data Types:', {
+        dataPewaris : typeof pdfData.dataPewaris,
+        ahliWaris : typeof pdfData.ahliWaris,
+        kondisi : typeof pdfData.kondisi,
+        tambahanKeterangan : typeof pdfData.tambahanKeterangan
+      })
+
+          // Validasi data
+    if (!pdfData.dataPewaris || !pdfData.ahliWaris) {
+      console.error('Missing required data:', {
+        hasDataPewaris: !!pdfData.dataPewaris,
+        hasAhliWaris: !!pdfData.ahliWaris
+      })
+      throw new Error('Data tidak lengkap untuk membuat PDF')
+    }
+      
+      // Generate filename
+      const pewarisNama = submission.dataPewaris?.nama || 'tanpa-nama'
+      const filename = `surat-pernyataan-${nomorSurat}-${pewarisNama}.pdf`
+      
+      // Call PDF generation API
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pdfData),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Gagal menghasilkan PDF`)
+      }
+      
+      // Create blob and download
+      const blob = await response.blob()
+      console.log('PDF Blob received:', blob)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      
+      link.href = url
+      link.download = filename
+      link.style.display = 'none'
+      
+      document.body.appendChild(link)
+      link.click()
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      }, 100)
+      
+      console.log('PDF download berhasil')
+      
+      // Update download count jika perlu
+      await fetch(`/api/admin/submissions/${submissionId}/increment-download`, { method: 'POST' })
+      
+    } catch (error) {
+      console.error('Download error:', error)
+      alert(`Gagal mengunduh PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+  
+  // Fungsi untuk preview PDF
+  const handlePreviewPDF = async (submissionId: string) => {
+    if (!submissionId) {
+      alert('ID surat tidak valid')
+      return
+    }
+    
+    setPreviewingId(submissionId)
+    
+    try {
+      // Fetch data submission
+      const submissionResponse = await fetch(`/api/admin/submissions/${submissionId}`)
+      const submissionData = await submissionResponse.json()
+      
+      if (!submissionData.success) {
+        throw new Error('Gagal mengambil data submission')
+      }
+      
+      const submission = submissionData.data
+      
+      // Format data untuk PDF
+      if (!submission?.dataPewaris) {
+        throw new Error('Data pewaris tidak ditemukan')
+      }
+
+      const pdfData = {
+        dataPewaris: submission.dataPewaris,
+        ahliWaris: submission.ahliWaris,
+        kondisi: submission.kondisi,
+        tambahanKeterangan: submission.tambahanKeterangan || ''
+      }
+      
+      // Call PDF generation API
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pdfData),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Gagal menghasilkan PDF`)
+      }
+      
+      // Create blob and open in new tab
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      
+    } catch (error) {
+      console.error('Preview error:', error)
+      alert(`Gagal membuka preview: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setPreviewingId(null)
+    }
   }
   
   const getStatusBadge = (status: string) => {
@@ -468,29 +630,37 @@ export default function AdminSubmissionsPage() {
                           </Button>
                         </>
                       )}
+                                      {/* Tombol Preview PDF */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
+                  onClick={() => handlePreviewPDF(submission.id)}
+                  title="Preview PDF"
+                  disabled={previewingId === submission.id}
+                >
+                  {previewingId === submission.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
+                </Button>
                       
-                      {submission.pdfUrl && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleViewPDF(submission.pdfUrl!)}
-                            title="Lihat PDF"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleDownloadPDF(submission.pdfUrl!, submission.nomorSurat)}
-                            title="Download PDF"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
+                  {/* Tombol Download PDF */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
+                  onClick={() => handleDownloadPDF(submission.id, submission.nomorSurat)}
+                  title="Download PDF"
+                  disabled={downloadingId === submission.id}
+                >
+                  {downloadingId === submission.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                </Button>
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -501,35 +671,6 @@ export default function AdminSubmissionsPage() {
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuLabel>Aksi</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleViewDetails(submission.id)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Lihat Detail
-                          </DropdownMenuItem>
-                          {submission.status === 'SUBMITTED' && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleApprove(submission.id)}>
-                                <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                                Setujui
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleReject(submission.id)}>
-                                <XCircle className="w-4 h-4 mr-2 text-red-600" />
-                                Tolak
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {submission.pdfUrl && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleViewPDF(submission.pdfUrl!)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                Lihat PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownloadPDF(submission.pdfUrl!, submission.nomorSurat)}>
-                                <Download className="w-4 h-4 mr-2" />
-                                Download PDF
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => navigator.clipboard.writeText(submission.nomorSurat)}>
                             Salin Nomor Surat
                           </DropdownMenuItem>
@@ -538,6 +679,21 @@ export default function AdminSubmissionsPage() {
                             console.log('Copied ID:', submission.id)
                           }}>
                             Salin ID
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator/>
+                          <DropdownMenuItem
+                            onClick={() => handlePreviewPDF(submission.id)}
+                            disabled={previewingId === submission.id}
+                            className="cursor-pointer"
+                          >
+                            {previewingId === submission.id ? 'Membuka Preview...' : 'Preview PDF'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDownloadPDF(submission.id, submission.nomorSurat)}
+                            disabled={downloadingId === submission.id}
+                            className="cursor-pointer"
+                          >
+                            {downloadingId === submission.id ? 'Mengunduh...' : 'Download PDF'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

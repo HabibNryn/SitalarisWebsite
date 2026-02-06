@@ -1,3 +1,5 @@
+import { StatusHidupType } from "@/app/dashboard/user/SuratPernyataan/types";
+
 // types/pernyataan-warisan.ts
 export type JenisKelamin = 'LAKI-LAKI' | 'PEREMPUAN';
 export type StatusPernikahan = 'MENIKAH' | 'BELUM_MENIKAH' | 'CERAI_HIDUP' | 'CERAI_MATI';
@@ -15,7 +17,7 @@ export interface DataKeluarga {
   jenisKelamin: JenisKelamin;
   statusPernikahan: StatusPernikahan;
   hubungan: HubunganKeluarga;
-  masihHidup: boolean;
+  status: StatusHidupType;
   memilikiKeturunan: boolean;
 }
 

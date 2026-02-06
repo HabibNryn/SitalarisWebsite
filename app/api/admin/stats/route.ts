@@ -334,7 +334,7 @@ async function getRecentActivity() {
       suratPernyataan: {
         select: {
           nomorSurat: true,
-          namaPewaris: true
+          dataPewaris: true
         }
       },
       user: {
@@ -347,28 +347,44 @@ async function getRecentActivity() {
   });
   
   return activities.map(log => {
+    const dataPewaris =
+      typeof log.suratPernyataan?.dataPewaris === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(log.suratPernyataan.dataPewaris as string) as Record<string, unknown>
+            } catch {
+              return {}
+            }
+          })()
+        : (log.suratPernyataan?.dataPewaris as Record<string, unknown> | undefined) || {}
+
+    const namaPewaris =
+      typeof dataPewaris.nama === 'string' && dataPewaris.nama.trim()
+        ? dataPewaris.nama
+        : 'Pewaris'
+
     let actionText = '';
     let icon = '📄';
     
     switch (log.action) {
       case 'CREATE':
-        actionText = `Membuat surat ${log.suratPernyataan?.nomorSurat || 'baru'}`;
+        actionText = `Membuat surat ${log.suratPernyataan?.nomorSurat || 'baru'} (${namaPewaris})`;
         icon = '📝';
         break;
       case 'UPDATE':
-        actionText = `Memperbarui surat ${log.suratPernyataan?.nomorSurat || ''}`;
+        actionText = `Memperbarui surat ${log.suratPernyataan?.nomorSurat || ''} (${namaPewaris})`;
         icon = '✏️';
         break;
       case 'DOWNLOAD':
-        actionText = `Mengunduh surat ${log.suratPernyataan?.nomorSurat || ''}`;
+        actionText = `Mengunduh surat ${log.suratPernyataan?.nomorSurat || ''} (${namaPewaris})`;
         icon = '⬇️';
         break;
       case 'GENERATE_PDF':
-        actionText = `Generate PDF untuk ${log.suratPernyataan?.nomorSurat || ''}`;
+        actionText = `Generate PDF untuk ${log.suratPernyataan?.nomorSurat || ''} (${namaPewaris})`;
         icon = '📄';
         break;
       case 'STATUS_CHANGE':
-        actionText = `Mengubah status surat ${log.suratPernyataan?.nomorSurat || ''}`;
+        actionText = `Mengubah status surat ${log.suratPernyataan?.nomorSurat || ''} (${namaPewaris})`;
         icon = '🔄';
         break;
       default:

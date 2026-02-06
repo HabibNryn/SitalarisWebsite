@@ -1,4 +1,4 @@
-// PERBAIKAN SCHEMA
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -94,7 +94,7 @@ model PermohonanAhliWaris {
   createdAt             DateTime         @default(now())
   statusPermohonan      StatusPermohonan @default(PENDING)
   agamaPewaris          String?
-  catatanAdmin          String?
+  catatan          String?
   instansiNikah         String?
   noSuratNikah          String?
   nomorAkteKematian     String?
@@ -133,69 +133,73 @@ model Profile {
   @@index([nik])
 }
 
+// MODEL UTAMA SURAT PERNYATAAN - DIPERBARUI
 model SuratPernyataan {
   id                   String               @id @default(cuid())
   nomorSurat           String               @unique
-  tanggalSurat         DateTime             @default(now())
-  namaPewaris          String
-  namaAyahPewaris      String
-  tempatLahirPewaris   String
-  tanggalLahirPewaris  DateTime
-  alamatPewaris        String
-  rtPewaris            String?
-  rwPewaris            String?
-  kelurahanPewaris     String               @default("Grogol")
-  kecamatanPewaris     String               @default("Grogol Petamburan")
-  kotaPewaris          String               @default("Jakarta Barat")
-  provinsiPewaris      String?              @default("DKI Jakarta") 
-  tempatMeninggal      String?
-  tanggalMeninggal     DateTime?
-  noAkteKematian       String?
-  tanggalAkteKematian  DateTime?
-  instansiAkteKematian String?              @default("Dinas Dukcapil Provinsi DKI Jakarta")
-  statusPernikahan     String
-  noSuratNikah         String?
-  tanggalNikah         DateTime?
-  instansiNikah        String?
-  ahliWaris            Json
-  dataPewaris          Json
-  jumlahAnak           Int                  @default(0)
-  jumlahIstri          Int                  @default(0)
-  jumlahSaudara        Int                  @default(0)
-  jumlahCucu           Int                  @default(0)
-  kondisi              String
+  userId               String
+  
+  // Data Pewaris
+  dataPewaris          Json                 // Menyimpan semua data pewaris sebagai JSON
+  
+  // Data Ahli Waris
+  ahliWaris            Json                 // Array ahli waris sebagai JSON
+  
+  // Data Tambahan (untuk kondisi 2 dan 3)
+  anakMeninggal        Json?                // Data anak yang meninggal (untuk kondisi 2 dan 3)
+  
+  // Informasi Kondisi
+  kondisi              String               // kondisi1, kondisi2, ..., kondisi7
+  
+  // Informasi Tambahan
+  tambahanKeterangan   String?
+  
+  // Informasi Pernikahan Kedua (untuk kondisi 4)
+  noSuratNikahKedua    String?
+  tanggalNikahKedua    DateTime?
+  instansiNikahKedua   String?
+  
+  // Status dan Tracking
   status               StatusSurat          @default(DRAFT)
-  catatan              String?
   isGenerated          Boolean              @default(false)
   generatedAt          DateTime?
-  downloadCount        Int                  @default(0)
   pdfFileName          String?
   pdfFileSize          Int?
+  pdfUrl               String?
+  pdfVersion           Int                  @default(0)
+  can_access_permohonan  Boolean              @default(false)
+  catatan              String?
+
+  // Review
   reviewNotes          String?
   reviewedBy           String?
   reviewedAt           DateTime?
+  completedAt          DateTime?
+  approvedAt           DateTime?
+  verifiedAt           DateTime?
+  submittedAt          DateTime?
+  
+  // Download dan Print Tracking
+  downloadCount        Int                  @default(0)
   printCount           Int                  @default(0)
   lastPrinted          DateTime?
-  pdfUrl               String?
-  pdfVersion           Int                  @default(0)
-  pdfGeneratedBy       String?
-  pdfLastGenerated     DateTime?
-  userId               String
+  lastDownloaded       DateTime?
+  
+  // Metadata
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-  agamaPewaris         String?
-  pekerjaanPewaris     String?
-  jenisKelaminPewaris  String?              
-  kewarganegaraan      String?              @default("Indonesia") 
+  
+  // Relations
   documentLogs         DocumentLog[]
   permohonan           PermohonanAhliWaris?
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Indexes
   @@index([nomorSurat])
   @@index([userId])
   @@index([status])
   @@index([createdAt])
-  @@index([namaPewaris])
+  @@index([kondisi])
 }
 
 model DocumentLog {
@@ -216,6 +220,7 @@ model DocumentLog {
   @@index([createdAt])
   @@index([userId])
 }
+
 model Notification {
   id          String        @id @default(cuid())
   userId      String
@@ -304,6 +309,7 @@ model playing_with_neon {
   value Float? @db.Real
 }
 
+// ENUMS
 enum UserRole {
   user
   admin
@@ -327,7 +333,8 @@ enum StatusSurat {
   APPROVED
   REJECTED
   ARCHIVED
-  EXPIRED   
+  EXPIRED 
+  COMPLETED  
 }
 
 enum DocumentAction {
