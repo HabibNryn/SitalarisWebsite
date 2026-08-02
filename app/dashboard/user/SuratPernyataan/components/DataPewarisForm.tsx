@@ -80,7 +80,7 @@ export default function DataPewarisForm({ form }: DataPewarisFormProps) {
       {kondisi && (
         <div className="mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-start">
-            <Info className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 mr-2 shrink-0" />
             <div>
               <p className="text-sm text-gray-600">
                 <strong>Keterangan:</strong> {getKondisiLabel(kondisi)}
