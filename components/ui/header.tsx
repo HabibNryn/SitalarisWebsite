@@ -209,21 +209,6 @@ export default function Header({
 
                 {/* Menu Items */}
                 <div className="py-2">
-                  <button
-                    onClick={handleProfileClick}
-                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <User className="w-4 h-4" />
-                    Profil Saya
-                  </button>
-
-                  <button
-                    onClick={handleSettingsClick}
-                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Pengaturan
-                  </button>
 
                   {(user.role === "admin" || user.role === "super_admin") && (
                     <button

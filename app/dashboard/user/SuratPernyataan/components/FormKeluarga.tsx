@@ -2,25 +2,39 @@
 "use client";
 
 import { UseFormReturn } from "react-hook-form";
-import { 
+import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/Form";
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { FormValues, HubunganType, getHubunganLabel } from "../constants/schemas";
+import { Button } from "@/components/ui/button";
+import { CloudUpload, X } from "lucide-react";
+import {
+  FormValues,
+  HubunganType,
+  getHubunganLabel,
+} from "../constants/schemas";
+import { UploadKTPField as UploadKTPFieldFromComponent } from "./FileUpload";
 
+// ============================================================
+// UPLOAD KTP dipakai dari ./FileUpload (hook upload + simpan uploadFileId)
+// ============================================================
+
+// ============================================================
+// KOMPONEN UTAMA FormKeluarga
+// ============================================================
 interface FormKeluargaProps {
   form: UseFormReturn<FormValues>;
   index: number;
@@ -29,16 +43,32 @@ interface FormKeluargaProps {
   readonly?: boolean;
 }
 
-export default function FormKeluarga({ 
-  form, 
-  index, 
-  hubunganDefault, 
+export default function FormKeluarga({
+  form,
+  index,
+  hubunganDefault,
   showKeterangan = true,
-  readonly = false
+  readonly = false,
 }: FormKeluargaProps) {
   const hubungan = form.watch(`ahliWaris.${index}.hubungan`) || hubunganDefault;
-  
-  // List agama yang umum di Indonesia
+
+  // Label untuk upload KTP
+  const getKTPLabel = () => {
+    if (hubungan === "ISTRI") return "Upload KTP Istri";
+    if (hubungan === "SUAMI") return "Upload KTP Suami";
+    if (hubungan === "ANAK") return "Upload KTP Anak (Jika memiliki KTP)";
+    if (hubungan === "CUCU") return "Upload KTP Cucu (Jika memiliki KTP)";
+    if (hubungan === "SAUDARA") return "Upload KTP Saudara (Jika memiliki KTP)";
+    return "Upload KTP";
+  };
+
+  // Apakah upload KTP wajib? Hanya untuk ISTRI dan SUAMI
+  const isKTPRequired = hubungan === "ISTRI" || hubungan === "SUAMI";
+
+  // Upload KTP selalu ditampilkan untuk semua hubungan
+  const shouldShowKTP = true;
+
+  // List agama
   const agamaOptions = [
     { value: "ISLAM", label: "Islam" },
     { value: "KRISTEN", label: "Kristen Protestan" },
@@ -76,8 +106,8 @@ export default function FormKeluarga({
                 Nama Lengkap <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
-                <Input 
-                  placeholder={`Contoh: Ahmad Budi`}
+                <Input
+                  placeholder="Contoh: Ahmad Budi"
                   {...field}
                   disabled={readonly}
                   className={readonly ? "bg-gray-50" : ""}
@@ -96,7 +126,7 @@ export default function FormKeluarga({
             <FormItem>
               <FormLabel className="text-sm font-medium">Nama Ayah</FormLabel>
               <FormControl>
-                <Input 
+                <Input
                   placeholder="Nama ayah kandung"
                   {...field}
                   disabled={readonly}
@@ -116,7 +146,7 @@ export default function FormKeluarga({
             <FormItem>
               <FormLabel className="text-sm font-medium">NIK</FormLabel>
               <FormControl>
-                <Input 
+                <Input
                   placeholder="16 digit NIK"
                   {...field}
                   disabled={readonly}
@@ -135,9 +165,11 @@ export default function FormKeluarga({
           name={`ahliWaris.${index}.tempatLahir`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">Tempat Lahir</FormLabel>
+              <FormLabel className="text-sm font-medium">
+                Tempat Lahir
+              </FormLabel>
               <FormControl>
-                <Input 
+                <Input
                   placeholder="Kota/Kabupaten"
                   {...field}
                   disabled={readonly}
@@ -155,9 +187,11 @@ export default function FormKeluarga({
           name={`ahliWaris.${index}.tanggalLahir`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">Tanggal Lahir</FormLabel>
+              <FormLabel className="text-sm font-medium">
+                Tanggal Lahir
+              </FormLabel>
               <FormControl>
-                <Input 
+                <Input
                   type="date"
                   {...field}
                   disabled={readonly}
@@ -179,9 +213,9 @@ export default function FormKeluarga({
               </span>
               <span className="ml-2 text-xs text-gray-500">(otomatis)</span>
             </div>
-            <input 
-              type="hidden" 
-              value={hubungan === "ISTRI" ? "PEREMPUAN" : "LAKI-LAKI"} 
+            <input
+              type="hidden"
+              value={hubungan === "ISTRI" ? "PEREMPUAN" : "LAKI-LAKI"}
               {...form.register(`ahliWaris.${index}.jenisKelamin`)}
             />
           </FormItem>
@@ -191,9 +225,11 @@ export default function FormKeluarga({
             name={`ahliWaris.${index}.jenisKelamin`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium">Jenis Kelamin</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <FormLabel className="text-sm font-medium">
+                  Jenis Kelamin
+                </FormLabel>
+                <Select
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={readonly}
                 >
@@ -221,7 +257,7 @@ export default function FormKeluarga({
             <FormItem>
               <FormLabel className="text-sm font-medium">Pekerjaan</FormLabel>
               <FormControl>
-                <Input 
+                <Input
                   placeholder="Contoh: PNS, Wiraswasta, dll"
                   {...field}
                   disabled={readonly}
@@ -240,8 +276,8 @@ export default function FormKeluarga({
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium">Agama</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
+              <Select
+                onValueChange={field.onChange}
                 defaultValue={field.value}
                 disabled={readonly}
               >
@@ -270,8 +306,8 @@ export default function FormKeluarga({
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium">Status</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
+              <Select
+                onValueChange={field.onChange}
                 defaultValue={field.value || "HIDUP"}
                 disabled={readonly}
               >
@@ -290,16 +326,18 @@ export default function FormKeluarga({
           )}
         />
 
-        {/* STATUS PERNIKAHAN */}
+        {/* STATUS PERNIKAHAN (kecuali untuk ISTRI/SUAMI) */}
         {!["ISTRI", "SUAMI"].includes(hubungan) && (
           <FormField
             control={form.control}
             name={`ahliWaris.${index}.statusPernikahan`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium">Status Pernikahan</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <FormLabel className="text-sm font-medium">
+                  Status Pernikahan
+                </FormLabel>
+                <Select
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={readonly}
                 >
@@ -342,7 +380,8 @@ export default function FormKeluarga({
                       Memiliki Keturunan
                     </FormLabel>
                     <p className="text-xs text-gray-500">
-                      Centang jika {getHubunganLabel(hubungan).toLowerCase()} sudah memiliki anak/cucu
+                      Centang jika {getHubunganLabel(hubungan).toLowerCase()}{" "}
+                      sudah memiliki anak/cucu
                     </p>
                   </div>
                 </FormItem>
@@ -359,7 +398,9 @@ export default function FormKeluarga({
           name={`ahliWaris.${index}.alamat`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">Alamat Lengkap</FormLabel>
+              <FormLabel className="text-sm font-medium">
+                Alamat Lengkap
+              </FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Contoh: Jl. Merdeka No. 10, RT 01/RW 02, Kelurahan Grogol, Kecamatan Grogol Petamburan, Jakarta Barat"
@@ -383,7 +424,8 @@ export default function FormKeluarga({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium">
-                  Keterangan Tambahan <span className="text-gray-400">(Opsional)</span>
+                  Keterangan Tambahan{" "}
+                  <span className="text-gray-400">(Opsional)</span>
                 </FormLabel>
                 <FormControl>
                   <Textarea
@@ -396,6 +438,21 @@ export default function FormKeluarga({
                 <FormMessage className="text-xs" />
               </FormItem>
             )}
+          />
+        </div>
+      )}
+
+      {/* ============================================================
+          UPLOAD KTP - Selalu muncul untuk semua hubungan
+          ============================================================ */}
+      {shouldShowKTP && (
+        <div className="mt-4 border-t pt-4">
+          <UploadKTPFieldFromComponent
+            form={form}
+            name={`ahliWaris.${index}.ktpFile`}
+            label={getKTPLabel()}
+            required={isKTPRequired} // Hanya wajib untuk ISTRI/SUAMI
+            disabled={readonly}
           />
         </div>
       )}

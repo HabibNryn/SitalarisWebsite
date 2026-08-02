@@ -4,7 +4,7 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-} from "@/components/ui/Form";
+} from "@/components/ui/form";
 import { kondisiAhliWaris } from "../constants/kondisiAhliWaris";
 import { UseFormReturn } from "react-hook-form";
 import { FormValues } from "../types";
@@ -43,7 +43,10 @@ export default function KondisiSelector({ form }: KondisiSelectorProps) {
             </FormControl>
             {field.value && (
               <p className="text-sm text-gray-500 mt-2">
-                {kondisiAhliWaris.find((k) => k.id === field.value)?.description}
+                {
+                  kondisiAhliWaris.find((k) => k.id === field.value)
+                    ?.description
+                }
               </p>
             )}
             <FormMessage />

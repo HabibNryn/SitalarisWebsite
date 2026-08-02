@@ -14,7 +14,7 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-} from "@/components/ui/Form";
+} from "@/components/ui/form";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -36,8 +36,12 @@ const schema = z.object({
   namaPewaris: z.string().min(1, "Nama pewaris harus diisi"),
   tempatLahirPewaris: z.string().min(1, "Tempat lahir pewaris harus diisi"),
   tanggalLahirPewaris: z.string().min(1, "Tanggal lahir pewaris harus diisi"),
-  tempatMeninggalPewaris: z.string().min(1, "Tempat meninggal pewaris harus diisi"),
-  tanggalMeninggalPewaris: z.string().min(1, "Tanggal meninggal pewaris harus diisi"),
+  tempatMeninggalPewaris: z
+    .string()
+    .min(1, "Tempat meninggal pewaris harus diisi"),
+  tanggalMeninggalPewaris: z
+    .string()
+    .min(1, "Tanggal meninggal pewaris harus diisi"),
   nomorAkteKematian: z.string().min(1, "Nomor akte kematian harus diisi"),
   ahliWaris: z.array(ahliWarisSchema).min(1, "Minimal ada 1 ahli waris"),
 });
@@ -70,7 +74,7 @@ export default function FormPermohonan() {
           agama: "",
           alamat: "",
           nik: "",
-        }
+        },
       ],
     },
   });
@@ -87,9 +91,9 @@ export default function FormPermohonan() {
         agama: "",
         alamat: "",
         nik: "",
-      }
+      },
     ]);
-    setAhliWarisCount(prev => prev + 1);
+    setAhliWarisCount((prev) => prev + 1);
   };
 
   const hapusAhliWaris = (index: number) => {
@@ -97,7 +101,7 @@ export default function FormPermohonan() {
     if (currentAhliWaris.length > 1) {
       const newAhliWaris = currentAhliWaris.filter((_, i) => i !== index);
       form.setValue("ahliWaris", newAhliWaris);
-      setAhliWarisCount(prev => prev - 1);
+      setAhliWarisCount((prev) => prev - 1);
     }
   };
 
@@ -105,7 +109,7 @@ export default function FormPermohonan() {
     setIsSubmitting(true);
     try {
       // Simulasi API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       console.log("DATA FORM PERMOHONAN:", data);
       alert("Permohonan berhasil dikirim! Kami akan memprosesnya segera.");
       router.push("/dashboard");
@@ -132,7 +136,8 @@ export default function FormPermohonan() {
             Form Pendaftaran Surat Pernyataan Ahli Waris
           </h1>
           <p className="text-gray-600">
-            Silakan isi formulir berikut untuk mengajukan permohonan surat pernyataan ahli waris.
+            Silakan isi formulir berikut untuk mengajukan permohonan surat
+            pernyataan ahli waris.
           </p>
         </div>
       </div>
@@ -141,14 +146,17 @@ export default function FormPermohonan() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            
             {/* Data Pewaris */}
             <div className="space-y-6">
               <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Data Pewaris</h2>
-                <p className="text-sm text-gray-500 mt-1">Data almarhum/almarhumah</p>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Data Pewaris
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Data almarhum/almarhumah
+                </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Email */}
                 <FormField
@@ -156,12 +164,14 @@ export default function FormPermohonan() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Email Pemohon</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Email Pemohon
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          type="email" 
-                          placeholder="email@example.com" 
-                          {...field} 
+                        <Input
+                          type="email"
+                          placeholder="email@example.com"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -175,12 +185,11 @@ export default function FormPermohonan() {
                   name="nomorTelp"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Nomor Telp/WA Pemohon</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Nomor Telp/WA Pemohon
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="08xxxxxxxxxx" 
-                          {...field} 
-                        />
+                        <Input placeholder="08xxxxxxxxxx" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -193,12 +202,11 @@ export default function FormPermohonan() {
                   name="namaPewaris"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Nama Lengkap Pewaris </FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Nama Lengkap Pewaris{" "}
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Nama lengkap pewaris" 
-                          {...field} 
-                        />
+                        <Input placeholder="Nama lengkap pewaris" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -211,12 +219,11 @@ export default function FormPermohonan() {
                   name="tempatLahirPewaris"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Tempat Lahir Pewaris</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Tempat Lahir Pewaris
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Kota tempat lahir" 
-                          {...field} 
-                        />
+                        <Input placeholder="Kota tempat lahir" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -229,12 +236,11 @@ export default function FormPermohonan() {
                   name="tanggalLahirPewaris"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Tanggal Lahir Pewaris</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Tanggal Lahir Pewaris
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                        />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -247,12 +253,11 @@ export default function FormPermohonan() {
                   name="tempatMeninggalPewaris"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Tempat Meninggal Pewaris</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Tempat Meninggal Pewaris
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Kota tempat meninggal" 
-                          {...field} 
-                        />
+                        <Input placeholder="Kota tempat meninggal" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -265,12 +270,11 @@ export default function FormPermohonan() {
                   name="tanggalMeninggalPewaris"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Tanggal Meninggal Pewaris</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Tanggal Meninggal Pewaris
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                        />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -283,12 +287,11 @@ export default function FormPermohonan() {
                   name="nomorAkteKematian"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Nomor Akte Kematian</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Nomor Akte Kematian
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Nomor akte kematian" 
-                          {...field} 
-                        />
+                        <Input placeholder="Nomor akte kematian" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -304,7 +307,9 @@ export default function FormPermohonan() {
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Data Ahli Waris</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Data Ahli Waris
+                  </h2>
                   <p className="text-sm text-gray-500">Data penerima warisan</p>
                 </div>
                 <Button
@@ -319,9 +324,14 @@ export default function FormPermohonan() {
               </div>
 
               {form.watch("ahliWaris").map((_, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                <div
+                  key={index}
+                  className="border border-gray-200 rounded-lg p-6 bg-gray-50"
+                >
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-md font-medium text-gray-900">Ahli Waris {index + 1}</h3>
+                    <h3 className="text-md font-medium text-gray-900">
+                      Ahli Waris {index + 1}
+                    </h3>
                     {ahliWarisCount > 1 && (
                       <Button
                         type="button"
@@ -343,11 +353,13 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.nama`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Nama Lengkap</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            Nama Lengkap
+                          </FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Nama lengkap ahli waris" 
-                              {...field} 
+                            <Input
+                              placeholder="Nama lengkap ahli waris"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -361,12 +373,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.nik`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">NIK</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            NIK
+                          </FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="16 digit NIK" 
-                              {...field} 
-                            />
+                            <Input placeholder="16 digit NIK" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -379,12 +390,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.tempatLahir`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Tempat Lahir</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            Tempat Lahir
+                          </FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Kota tempat lahir" 
-                              {...field} 
-                            />
+                            <Input placeholder="Kota tempat lahir" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -397,12 +407,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.tanggalLahir`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Tanggal Lahir</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            Tanggal Lahir
+                          </FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
-                              {...field} 
-                            />
+                            <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -415,11 +424,13 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.pekerjaan`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Pekerjaan</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            Pekerjaan
+                          </FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Pekerjaan ahli waris" 
-                              {...field} 
+                            <Input
+                              placeholder="Pekerjaan ahli waris"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -433,12 +444,11 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.agama`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Agama</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            Agama
+                          </FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Agama ahli waris" 
-                              {...field} 
-                            />
+                            <Input placeholder="Agama ahli waris" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -451,7 +461,9 @@ export default function FormPermohonan() {
                       name={`ahliWaris.${index}.alamat`}
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-sm font-medium text-gray-700">Alamat Lengkap</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">
+                            Alamat Lengkap
+                          </FormLabel>
                           <FormControl>
                             <textarea
                               {...field}
@@ -479,8 +491,8 @@ export default function FormPermohonan() {
               >
                 Batal
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >

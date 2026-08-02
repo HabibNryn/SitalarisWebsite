@@ -31,7 +31,8 @@ model User {
   sessions            Session[]
   suratPernyataan     SuratPernyataan[]
   notifications       Notification[]        
-  activityLogs        ActivityLog[]         
+  activityLogs        ActivityLog[]
+  UploadFiles          UploadFile[]         
 
   @@index([email])
   @@index([role])
@@ -221,6 +222,23 @@ model DocumentLog {
   @@index([userId])
 }
 
+model UploadFile {
+  id          String   @id @default(cuid())
+  filename    String
+  fileSize    Int
+  fileType    String
+  filePath    String
+  uploadedBy  String?
+  userId      String
+  user        User?    @relation(fields: [uploadedBy], references: [id])
+  uploadedAt  DateTime @default(now())
+  metadata    Json?
+  
+  @@index([filename])
+  @@index([fileType])
+  @@index([uploadedAt])
+}
+
 model Notification {
   id          String        @id @default(cuid())
   userId      String
@@ -301,12 +319,6 @@ model BackupLog {
   @@index([type])
   @@index([status])
   @@index([createdAt])
-}
-
-model playing_with_neon {
-  id    Int    @id @default(autoincrement())
-  name  String
-  value Float? @db.Real
 }
 
 // ENUMS

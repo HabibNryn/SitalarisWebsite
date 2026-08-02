@@ -1,3 +1,4 @@
+// app/dashboard/user/SuratPernyataan/components/AhliWarisForm.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -5,7 +6,7 @@ import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Users, UserPlus, AlertCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { FormValues, KondisiType } from "../types";
-import FormKeluarga from "./FormKeluarga";
+import FormKeluarga from "./FormKeluarga"; 
 import {
   Card,
   CardContent,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getKondisiLabel, getHubunganLabel } from "../constants/schemas";
+import { getKondisiLabel } from "../constants/schemas";
 import {
   Select,
   SelectContent,
@@ -223,7 +224,7 @@ export default function AhliWarisForm({ form }: Props) {
         jenisKelamin: "PEREMPUAN",
         statusPernikahan: "MENIKAH",
         hubungan: "ISTRI" as const,
-statusHidup: "HIDUP",  
+        statusHidup: "HIDUP",  
         memilikiKeturunan: false,
         keterangan,
         urutan,

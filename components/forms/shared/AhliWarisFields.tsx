@@ -9,7 +9,7 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-} from "@/components/ui/Form";
+} from "@/components/ui/form";
 
 interface AhliWarisFieldsProps {
   form: UseFormReturn<SuratWarisFormData>;
@@ -18,11 +18,11 @@ interface AhliWarisFieldsProps {
   onHapusAhliWaris: (index: number) => void;
 }
 
-export function AhliWarisFields({ 
-  form, 
-  ahliWarisCount, 
-  onTambahAhliWaris, 
-  onHapusAhliWaris 
+export function AhliWarisFields({
+  form,
+  ahliWarisCount,
+  onTambahAhliWaris,
+  onHapusAhliWaris,
 }: AhliWarisFieldsProps) {
   return (
     <div className="space-y-6">
@@ -40,9 +40,14 @@ export function AhliWarisFields({
       </div>
 
       {form.watch("ahliWaris").map((_, index) => (
-        <div key={index} className="border border-gray-200 rounded-lg p-6 bg-white">
+        <div
+          key={index}
+          className="border border-gray-200 rounded-lg p-6 bg-white"
+        >
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-md font-medium text-gray-900">Ahli Waris {index + 1}</h3>
+            <h3 className="text-md font-medium text-gray-900">
+              Ahli Waris {index + 1}
+            </h3>
             {ahliWarisCount > 1 && (
               <Button
                 type="button"
@@ -63,11 +68,13 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.nama`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Nama</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Nama
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Nama lengkap ahli waris" 
-                      {...field} 
+                    <Input
+                      placeholder="Nama lengkap ahli waris"
+                      {...field}
                       className="bg-white"
                     />
                   </FormControl>
@@ -82,11 +89,13 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.nik`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">NIK</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    NIK
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="16 digit NIK" 
-                      {...field} 
+                    <Input
+                      placeholder="16 digit NIK"
+                      {...field}
                       className="bg-white"
                     />
                   </FormControl>
@@ -101,11 +110,13 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.tempatLahir`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Tempat Lahir Ahli Waris</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Tempat Lahir Ahli Waris
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Kota tempat lahir" 
-                      {...field} 
+                    <Input
+                      placeholder="Kota tempat lahir"
+                      {...field}
                       className="bg-white"
                     />
                   </FormControl>
@@ -120,13 +131,11 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.tanggalLahir`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Tanggal Lahir Ahli Waris</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Tanggal Lahir Ahli Waris
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="date" 
-                      {...field} 
-                      className="bg-white"
-                    />
+                    <Input type="date" {...field} className="bg-white" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -139,11 +148,13 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.pekerjaan`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Pekerjaan</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Pekerjaan
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Pekerjaan ahli waris" 
-                      {...field} 
+                    <Input
+                      placeholder="Pekerjaan ahli waris"
+                      {...field}
                       className="bg-white"
                     />
                   </FormControl>
@@ -158,11 +169,13 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.agama`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Agama</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Agama
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Agama ahli waris" 
-                      {...field} 
+                    <Input
+                      placeholder="Agama ahli waris"
+                      {...field}
                       className="bg-white"
                     />
                   </FormControl>
@@ -177,7 +190,9 @@ export function AhliWarisFields({
               name={`ahliWaris.${index}.alamat`}
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel className="text-sm font-medium text-gray-700">Alamat</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">
+                    Alamat
+                  </FormLabel>
                   <FormControl>
                     <textarea
                       {...field}

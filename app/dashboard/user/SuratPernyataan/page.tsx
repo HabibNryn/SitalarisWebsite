@@ -6,13 +6,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/Form"; // Pastikan ini diimpor dengan benar
+import { Form } from "@/components/ui/form";
 import Header from "./components/Header";
 import KondisiSelector from "./components/KondisiSelector";
 import DataPewarisForm from "./components/DataPewarisForm";
 import AhliWarisForm from "./components/AhliWarisForm";
 import { defaultDataPewaris, formSchema } from "./constants/schemas";
 import { FormValues } from "./types";
+import { FileUpload } from "@/components/forms/UploadFile";
 
 export default function FormPernyataanWarisan() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function FormPernyataanWarisan() {
       // Simpan ke localStorage atau state
       localStorage.setItem("sitalaris-draft", JSON.stringify(data));
 
-      // Simpan ke database (jika ada API)
+      // Simpan ke database 
       try {
         const response = await fetch("/api/surat-pernyataan/submit", {
           method: "POST",
@@ -136,6 +137,9 @@ export default function FormPernyataanWarisan() {
             {kondisi && kondisi !== "kondisi6" && (
               <AhliWarisForm form={form} />
             )}
+
+            {/* Step 4: Upload File Pendukung */}
+            
 
             {/* Status Messages */}
             {saveError && (

@@ -50,6 +50,10 @@ const AhliWarisSchema = z.object({
   agama: z.string().optional(),
   alamat: z.string().optional(),
   nik: z.string().optional(),
+
+  // uploadFileId KTP
+  ktpFile: z.string().optional(),
+
   statusHidup: StatusHidupSchema.optional(),
   statusPernikahan: StatusPernikahanSchema.optional(),
   memilikiKeturunan: z.boolean().optional().default(false),
@@ -81,6 +85,10 @@ const DataPewarisSchema = z.object({
   noSuratNikah: z.string().optional(),
   tanggalNikah: z.string().optional(),
   instansiNikah: z.string().optional(),
+
+  // uploadFileId KTP
+  ktpFile: z.string().optional(),
+
   noSuratNikahKedua: z.string().optional(),
   tanggalNikahKedua: z.string().optional(),
   instansiNikahKedua: z.string().optional(),
@@ -108,32 +116,34 @@ const AnakMeninggalSchema = z.object({
   instansiNikah: z.string().optional(),
 });
 
-const FormSchema = z.object({
-  kondisi: KondisiSchema,
-  dataPewaris: DataPewarisSchema,
-  ahliWaris: z
-    .array(AhliWarisSchema)
-    .default([])
-    .transform((items) =>
-      items.map((item) => ({
-        ...item,
-        status:
-          typeof item.status === "boolean"
-            ? item.status
-            : item.statusHidup === "HIDUP",
-      }))
-    ),
-  anakMeninggal: z.array(AnakMeninggalSchema).optional(),
-  tambahanKeterangan: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.kondisi !== "kondisi6" && data.ahliWaris.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["ahliWaris"],
-      message: "Minimal 1 ahli waris diperlukan",
-    });
-  }
-});
+const FormSchema = z
+  .object({
+    kondisi: KondisiSchema,
+    dataPewaris: DataPewarisSchema,
+    ahliWaris: z
+      .array(AhliWarisSchema)
+      .default([])
+      .transform((items) =>
+        items.map((item) => ({
+          ...item,
+          status:
+            typeof item.status === "boolean"
+              ? item.status
+              : item.statusHidup === "HIDUP",
+        })),
+      ),
+    anakMeninggal: z.array(AnakMeninggalSchema).optional(),
+    tambahanKeterangan: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.kondisi !== "kondisi6" && data.ahliWaris.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ahliWaris"],
+        message: "Minimal 1 ahli waris diperlukan",
+      });
+    }
+  });
 
 /* =========================
    HELPERS
@@ -165,7 +175,7 @@ export async function POST(request: NextRequest) {
     if (!tanggalLahir || !tanggalMeninggal) {
       return NextResponse.json(
         { error: "Format tanggal tidak valid" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -184,7 +194,7 @@ export async function POST(request: NextRequest) {
         if (item.hubungan === "CUCU") acc.cucu++;
         return acc;
       },
-      { istri: 0, anak: 0, saudara: 0, cucu: 0 }
+      { istri: 0, anak: 0, saudara: 0, cucu: 0 },
     );
 
     const dataPewarisWithCounts = {
@@ -195,12 +205,44 @@ export async function POST(request: NextRequest) {
       jumlahIstri: data.dataPewaris.jumlahIstri ?? jumlah.istri,
     };
 
+    // Validasi user relasi: session.user.id kadang tidak sinkron dengan DB.
+    // fallback: coba cari user lewat session.user.email.
+    const sessionUserId = session.user.id;
+    const sessionEmail = (session.user as { email?: string })?.email;
+
+    let user: { id: string } | null = null;
+    if (sessionUserId) {
+      user = await prisma.user.findUnique({
+        where: { id: sessionUserId },
+        select: { id: true },
+      });
+    }
+
+    if (!user && sessionEmail) {
+      user = await prisma.user.findUnique({
+        where: { email: sessionEmail },
+        select: { id: true },
+      });
+    }
+
+    // Jika user memang tidak ada di DB, tidak perlu memblokir proses create di sini.
+    // Skema relasi SuratPernyataan.userId tetap memakai session.user.id.
+    // Namun kita hanya log untuk investigasi, supaya UI tidak langsung 401.
+    if (!user) {
+      console.warn(
+        "[surat-pernyataan/submit] session user tidak ditemukan di DB",
+        { sessionUserId, sessionEmail },
+      );
+    }
+
+    const finalUserId = user?.id ?? session.user.id;
+
     // Simpan ke database
     const surat = await prisma.$transaction(async (tx) => {
       const created = await tx.suratPernyataan.create({
         data: {
           nomorSurat,
-          userId: session.user.id,
+          userId: user?.id ?? session.user.id,
           kondisi: data.kondisi,
 
           // JSON fields
@@ -213,18 +255,21 @@ export async function POST(request: NextRequest) {
           // Informasi tambahan
           tambahanKeterangan: data.tambahanKeterangan || "",
           noSuratNikahKedua: data.dataPewaris.noSuratNikahKedua || null,
-          tanggalNikahKedua: parseDate(data.dataPewaris.tanggalNikahKedua) || null,
+          tanggalNikahKedua:
+            parseDate(data.dataPewaris.tanggalNikahKedua) || null,
           instansiNikahKedua: data.dataPewaris.instansiNikahKedua || null,
 
           status: "SUBMITTED",
           submittedAt: new Date(),
+          // Pastikan userId relasi menggunakan user yang benar-benar ada di DB
+          // (jika user ditemukan via email, gunakan id tersebut)
         },
       });
 
       await tx.documentLog.create({
         data: {
           suratPernyataanId: created.id,
-          userId: session.user.id,
+          userId: finalUserId,
           action: "CREATE",
           details: `Surat pernyataan dibuat (${nomorSurat})`,
         },
@@ -239,7 +284,7 @@ export async function POST(request: NextRequest) {
         message: "Surat pernyataan berhasil diajukan",
         data: surat,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: unknown) {
     // Zod validation error
@@ -252,7 +297,7 @@ export async function POST(request: NextRequest) {
             message: issue.message,
           })),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -265,7 +310,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Nomor surat sudah ada" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -274,14 +319,14 @@ export async function POST(request: NextRequest) {
       console.error("Submit error:", error.message);
       return NextResponse.json(
         { error: "Gagal menyimpan surat pernyataan", details: error.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     console.error("Unknown error:", error);
     return NextResponse.json(
       { error: "Terjadi kesalahan tidak terduga" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

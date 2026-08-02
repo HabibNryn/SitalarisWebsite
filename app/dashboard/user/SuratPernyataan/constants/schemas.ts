@@ -40,23 +40,25 @@ export const dataKeluargaSchema = z.object({
   nama: z.string().min(1, "Nama harus diisi"),
   hubungan: HubunganEnum,
   jenisKelamin: JenisKelaminEnum,
-  
+
   // Data tambahan berdasarkan template surat
   namaAyah: z.string().min(1, "Nama ayah harus diisi"),
   tempatLahir: z.string().min(1, "Tempat lahir harus diisi"),
   tanggalLahir: z.string().min(1, "Tanggal lahir harus diisi"),
-  
+
   // Informasi dari template surat
   pekerjaan: z.string().min(1, "Pekerjaan harus diisi"),
   agama: z.string().min(1, "Agama harus diisi"),
   alamat: z.string().min(1, "Alamat harus diisi"),
   nik: z.string().min(1, "NIK harus diisi"),
-  
+
   // Status hidup - penting untuk kondisi 2 dan 3
   statusHidup: StatusHidupEnum.default("HIDUP"),
   statusPernikahan: StatusPernikahanEnum.optional(),
   memilikiKeturunan: z.boolean().default(false),
-  
+  // menyimpan uploadFileId (string) dari UploadFile
+  ktpFile: z.string().optional(),
+
   // Keterangan tambahan
   keterangan: z.string().optional(),
   urutan: z.number().optional(), // untuk urutan penampilan
@@ -77,7 +79,9 @@ export const anakMeninggalSchema = z.object({
   memilikiKeturunan: z.boolean().default(false),
   // Data pernikahan jika sudah menikah
   sudahMenikah: z.boolean().default(false),
-  namaPasangan: z.string().min(1, "Nama pasangan dari anak yang sudah meninggal harus diisi"),
+  namaPasangan: z
+    .string()
+    .min(1, "Nama pasangan dari anak yang sudah meninggal harus diisi"),
   nomorSuratNikah: z.string().min(1, "Nomor surat nikah harus diisi"),
   tanggalNikah: z.string().min(1, "Tanggal nikah harus diisi"),
   instansiNikah: z.string().min(1, "Instansi nikah harus diisi"),
@@ -116,6 +120,8 @@ export const dataPewarisSchema = z.object({
   noSuratNikah: z.string().min(1, "Nomor surat nikah harus diisi"),
   tanggalNikah: z.string().min(1, "Tanggal nikah harus diisi"),
   instansiNikah: z.string().min(1, "Instansi nikah harus diisi"),
+  // menyimpan uploadFileId (string) dari UploadFile
+  ktpFile: z.string().optional(),
 
   // ==== DATA PERNIKAHAN KEDUA - UNTUK KONDISI 4 ====
   noSuratNikahKedua: z.string().optional(),
@@ -126,7 +132,7 @@ export const dataPewarisSchema = z.object({
   pekerjaan: z.string().optional(),
   agama: z.string().min(1, "Agama pewaris harus diisi"),
   nik: z.string().optional(),
-  
+
   // ==== JUMLAH UNTUK STATISTIK ====
   jumlahAnak: z.number().optional(),
   jumlahCucu: z.number().optional(),
@@ -140,7 +146,9 @@ export const dataPewarisSchema = z.object({
 export const formSchema = z.object({
   kondisi: KondisiEnum,
   dataPewaris: dataPewarisSchema,
-  ahliWaris: z.array(dataKeluargaSchema).min(1, "Minimal 1 ahli waris diperlukan"),
+  ahliWaris: z
+    .array(dataKeluargaSchema)
+    .min(1, "Minimal 1 ahli waris diperlukan"),
   anakMeninggal: z.array(anakMeninggalSchema).optional(), // Untuk kondisi 2 dan 3
   tambahanKeterangan: z.string().optional(),
 });
@@ -159,14 +167,6 @@ export type StatusPernikahanType = z.infer<typeof StatusPernikahanEnum>;
 export type HubunganType = z.infer<typeof HubunganEnum>;
 export type KondisiType = z.infer<typeof KondisiEnum>;
 export type StatusHidupType = z.infer<typeof StatusHidupEnum>;
-// export type FormValuesExtended = FormValues & {
-//   dataPewaris: DataPewarisType & {
-//     jumlahAnak: number;
-//     jumlahCucu: number;
-//     jumlahSaudara: number;
-//     jumlahIstri: number;
-//   };
-// };
 
 /* =======================
    DEFAULT VALUES - DIPERBARUI
@@ -270,9 +270,11 @@ export function getJumlahAhliWaris(ahliWaris: DataKeluargaType[]): {
 } {
   const jumlahAnak = ahliWaris.filter((a) => a.hubungan === "ANAK").length;
   const jumlahIstri = ahliWaris.filter((a) => a.hubungan === "ISTRI").length;
-  const jumlahSaudara = ahliWaris.filter((a) => a.hubungan === "SAUDARA").length;
+  const jumlahSaudara = ahliWaris.filter(
+    (a) => a.hubungan === "SAUDARA",
+  ).length;
   const jumlahCucu = ahliWaris.filter((a) => a.hubungan === "CUCU").length;
-  
+
   return {
     jumlahAnak,
     jumlahIstri,
@@ -293,7 +295,9 @@ export const validateBasedOnKondisi = (data: FormValues): string[] => {
   const saudaraList = ahliWaris.filter((item) => item.hubungan === "SAUDARA");
   const cucuList = ahliWaris.filter((item) => item.hubungan === "CUCU");
   const anakHidup = anakList.filter((item) => item.statusHidup === "HIDUP");
-  const anakMeninggalList = anakList.filter((item) => item.statusHidup === "MENINGGAL");
+  const anakMeninggalList = anakList.filter(
+    (item) => item.statusHidup === "MENINGGAL",
+  );
 
   switch (kondisi) {
     case "kondisi1":
@@ -407,9 +411,7 @@ export const validateBasedOnKondisi = (data: FormValues): string[] => {
    FUNGSI INISIALISASI FORM BERDASARKAN KONDISI
 ======================= */
 
-export function initializeFormForCondition(
-  kondisi: KondisiType,
-): FormValues {
+export function initializeFormForCondition(kondisi: KondisiType): FormValues {
   const baseForm: FormValues = {
     kondisi,
     dataPewaris: { ...defaultDataPewaris },
@@ -465,7 +467,7 @@ export function initializeFormForCondition(
           jenisKelamin: "PEREMPUAN",
           urutan: 2,
           asalIstri: "KEDUA",
-        }
+        },
       );
       break;
 
@@ -490,11 +492,13 @@ export function getKondisiLabel(kondisi: string): string {
   const kondisiMap: Record<string, string> = {
     kondisi1: "Pewaris memiliki 1 istri dan semua anak masih hidup",
     kondisi2: "Pewaris memiliki 1 istri dan ada anak yang meninggal",
-    kondisi3: "Pewaris memiliki 1 istri, ada anak yang meninggal dan memiliki cucu",
+    kondisi3:
+      "Pewaris memiliki 1 istri, ada anak yang meninggal dan memiliki cucu",
     kondisi4: "Pewaris menikah 2 kali",
     kondisi5: "Suami pewaris masih hidup",
     kondisi6: "Pewaris tidak memiliki keturunan",
-    kondisi7: "Pewaris tidak memiliki keturunan dan hanya memiliki saudara kandung",
+    kondisi7:
+      "Pewaris tidak memiliki keturunan dan hanya memiliki saudara kandung",
   };
   return kondisiMap[kondisi] || kondisi;
 }

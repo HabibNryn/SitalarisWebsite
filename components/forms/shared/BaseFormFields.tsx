@@ -8,7 +8,7 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-} from "@/components/ui/Form";
+} from "@/components/ui/form";
 
 interface BaseFormFieldsProps {
   form: UseFormReturn<BaseFormData>;
@@ -23,12 +23,14 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="email"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              Email
+            </FormLabel>
             <FormControl>
-              <Input 
-                type="email" 
-                placeholder="email@example.com" 
-                {...field} 
+              <Input
+                type="email"
+                placeholder="email@example.com"
+                {...field}
                 className="bg-white"
               />
             </FormControl>
@@ -43,11 +45,13 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="nomorTelp"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-sm font-medium text-gray-700">Nomor Telp/WA</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              Nomor Telp/WA
+            </FormLabel>
             <FormControl>
-              <Input 
-                placeholder="08xxxxxxxxxx" 
-                {...field} 
+              <Input
+                placeholder="08xxxxxxxxxx"
+                {...field}
                 className="bg-white"
               />
             </FormControl>
@@ -62,11 +66,13 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="namaPemohon"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-sm font-medium text-gray-700">Nama Pemohon</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              Nama Pemohon
+            </FormLabel>
             <FormControl>
-              <Input 
-                placeholder="Nama lengkap pemohon" 
-                {...field} 
+              <Input
+                placeholder="Nama lengkap pemohon"
+                {...field}
                 className="bg-white"
               />
             </FormControl>
@@ -81,11 +87,13 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="tempatLahir"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-sm font-medium text-gray-700">Tempat Lahir</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              Tempat Lahir
+            </FormLabel>
             <FormControl>
-              <Input 
-                placeholder="Kota tempat lahir" 
-                {...field} 
+              <Input
+                placeholder="Kota tempat lahir"
+                {...field}
                 className="bg-white"
               />
             </FormControl>
@@ -100,13 +108,11 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="tanggalLahir"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-sm font-medium text-gray-700">Tanggal Lahir</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              Tanggal Lahir
+            </FormLabel>
             <FormControl>
-              <Input 
-                type="date" 
-                {...field} 
-                className="bg-white"
-              />
+              <Input type="date" {...field} className="bg-white" />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -119,11 +125,13 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="nik"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-sm font-medium text-gray-700">NIK</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              NIK
+            </FormLabel>
             <FormControl>
-              <Input 
-                placeholder="16 digit NIK" 
-                {...field} 
+              <Input
+                placeholder="16 digit NIK"
+                {...field}
                 className="bg-white"
               />
             </FormControl>
@@ -138,7 +146,9 @@ export function BaseFormFields({ form }: BaseFormFieldsProps) {
         name="alamat"
         render={({ field }) => (
           <FormItem className="md:col-span-2">
-            <FormLabel className="text-sm font-medium text-gray-700">Alamat</FormLabel>
+            <FormLabel className="text-sm font-medium text-gray-700">
+              Alamat
+            </FormLabel>
             <FormControl>
               <textarea
                 {...field}

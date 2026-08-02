@@ -1,0 +1,13 @@
+- [ ] Update backend upload API: app/api/uploadFile/route.ts
+  - [ ] Simpan file ke public/uploads
+  - [ ] Create Prisma UploadFile record
+  - [ ] Return uploadFileId + url/filePath
+- [ ] Ubah komponen upload KTP agar langsung upload dan set value form ke uploadFileId
+  - [ ] app/dashboard/user/SuratPernyataan/components/FileUpload.tsx
+- [ ] Tambahkan field upload KTP untuk tiap ahli waris
+  - [ ] components/forms/shared/AhliWarisFields.tsx (atau komponen form ahli waris yang relevan)
+- [ ] Sesuaikan Zod schema submit agar menerima ktpFileId pada dataPewaris dan ahliWaris
+  - [ ] app/api/surat-pernyataan/submit/route.ts
+- [ ] Pastikan admin dashboard menampilkan KTP per objek dari UploadFile
+  - [ ] app/dashboard/admin/submissions/[id]/page.tsx dan/atau components terkait
+- [ ] Jalankan lint/build/test sederhana
