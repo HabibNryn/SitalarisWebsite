@@ -168,6 +168,7 @@ model SuratPernyataan {
   pdfFileSize          Int?
   pdfUrl               String?
   pdfVersion           Int                  @default(0)
+  sentAt               DateTime?            // Waktu pengiriman email notifikasi selesai
   can_access_permohonan  Boolean              @default(false)
   catatan              String?
 
@@ -346,7 +347,8 @@ enum StatusSurat {
   REJECTED
   ARCHIVED
   EXPIRED 
-  COMPLETED  
+  COMPLETED
+  SENT
 }
 
 enum DocumentAction {

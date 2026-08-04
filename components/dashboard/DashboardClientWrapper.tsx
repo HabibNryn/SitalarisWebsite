@@ -14,7 +14,6 @@ export default function DashboardClientWrapper() {
       <div className="flex">
         <Sidebar collapsed={collapsed} />
         <main className="flex-1 p-4 md:p-8 space-y-6">
-          {/* Bagian HeroSpline dihapus sesuai permintaan */}
           
           {/* Welcome Section */}
           <section className="rounded-xl bg-white border border-gray-200 shadow-sm p-6">

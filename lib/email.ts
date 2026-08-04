@@ -1,29 +1,42 @@
 // lib/email.ts
-import nodemailer from 'nodemailer'
-import fs from 'fs/promises'
-import path from 'path'
+import nodemailer from "nodemailer";
+import fs from "fs/promises";
+import path from "path";
 
 interface EmailOptions {
-  to: string
-  subject: string
-  html: string
+  to: string;
+  subject: string;
+  html: string;
   attachments?: Array<{
-    filename: string
-    content: Buffer
-    contentType: string
-  }>
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
+}
+
+export interface CompletedLetterEmailParams {
+  to: string;
+  userName: string | null;
+  letterTitle: string;
+  nomorSurat: string;
+  /** Buffer PDF jika tersedia di server, dikirim sebagai attachment */
+  pdfBuffer?: Buffer;
+  /** Nama file PDF untuk attachment */
+  pdfFilename?: string;
+  /** Link download fallback jika PDF tidak tersedia */
+  downloadUrl?: string;
 }
 
 export async function sendEmail(options: EmailOptions) {
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true',
+    port: parseInt(process.env.EMAIL_PORT || "587"),
+    secure: process.env.EMAIL_SECURE === "true",
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD,
     },
-  })
+  });
 
   const mailOptions = {
     from: `"Sitalaris" <${process.env.EMAIL_FROM}>`,
@@ -31,16 +44,16 @@ export async function sendEmail(options: EmailOptions) {
     subject: options.subject,
     html: options.html,
     attachments: options.attachments,
-  }
+  };
 
-  return transporter.sendMail(mailOptions)
+  return transporter.sendMail(mailOptions);
 }
 
 export async function sendApprovalEmail(
   userEmail: string,
   userName: string,
   nomorSurat: string,
-  pdfBuffer: Buffer
+  pdfBuffer: Buffer,
 ) {
   const html = `
     <!DOCTYPE html>
@@ -73,25 +86,27 @@ export async function sendApprovalEmail(
       </div>
     </body>
     </html>
-  `
+  `;
 
   return sendEmail({
     to: userEmail,
     subject: `Surat Pernyataan Ahli Waris ${nomorSurat} Telah Disetujui`,
     html,
-    attachments: [{
-      filename: `surat-pernyataan-ahli-waris-${nomorSurat}.pdf`,
-      content: pdfBuffer,
-      contentType: 'application/pdf'
-    }]
-  })
+    attachments: [
+      {
+        filename: `surat-pernyataan-ahli-waris-${nomorSurat}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+  });
 }
 
 export async function sendRejectionEmail(
   userEmail: string,
   userName: string,
   nomorSurat: string,
-  reason: string
+  reason: string,
 ) {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -107,11 +122,94 @@ export async function sendRejectionEmail(
       <p>Terima kasih,</p>
       <p>Tim Sitalaris</p>
     </div>
-  `
+  `;
 
   return sendEmail({
     to: userEmail,
     subject: `Surat Pernyataan Ahli Waris ${nomorSurat} Membutuhkan Perbaikan`,
-    html
-  })
+    html,
+  });
+}
+
+/**
+ * Kirim email notifikasi bahwa surat telah selesai diproses.
+ * Jika pdfBuffer disediakan, PDF akan dilampirkan. Jika tidak, email
+ * berisi link download sebagai fallback.
+ */
+export async function sendCompletedLetterEmail(
+  params: CompletedLetterEmailParams,
+) {
+  const {
+    to,
+    userName,
+    letterTitle,
+    nomorSurat,
+    pdfBuffer,
+    pdfFilename,
+    downloadUrl,
+  } = params;
+
+  const displayName = userName?.trim() ? userName.trim() : "Pengguna";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background-color: #f9f9f9; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .btn {
+          display: inline-block; background-color: #2563eb; color: white;
+          padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 16px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Surat Anda Telah Selesai Diproses</h1>
+        </div>
+        <div class="content">
+          <p>Halo <strong>${displayName}</strong>,</p>
+          <p>Kami informasikan bahwa surat dengan judul <strong>${letterTitle}</strong>
+             (Nomor: <strong>${nomorSurat}</strong>) telah selesai diproses.</p>
+          ${
+            pdfBuffer
+              ? `<p>Surat resmi dalam format PDF terlampir pada email ini. Silakan unduh dan gunakan sesuai kebutuhan.</p>`
+              : downloadUrl
+                ? `<p>Surat resmi dalam format PDF dapat Anda unduh melalui tombol di bawah ini:</p>
+                   <p><a class="btn" href="${downloadUrl}" target="_blank">Unduh Surat PDF</a></p>`
+                : `<p>Surat resmi sudah dapat diakses melalui akun Anda pada aplikasi Sitalaris.</p>`
+          }
+          <br>
+          <p>Terima kasih telah menggunakan layanan Sitalaris.</p>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} Sitalaris. Semua hak dilindungi.</p>
+          <p>Email ini dikirim secara otomatis, mohon tidak membalas.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const attachments: EmailOptions["attachments"] = pdfBuffer
+    ? [
+        {
+          filename: pdfFilename || `surat-${nomorSurat}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ]
+    : undefined;
+
+  return sendEmail({
+    to,
+    subject: "Surat Anda telah selesai diproses",
+    html,
+    attachments,
+  });
 }
