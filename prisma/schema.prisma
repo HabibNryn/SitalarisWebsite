@@ -194,8 +194,6 @@ model SuratPernyataan {
   documentLogs         DocumentLog[]
   permohonan           PermohonanAhliWaris?
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Indexes
   @@index([nomorSurat])
   @@index([userId])
   @@index([status])
