@@ -150,7 +150,7 @@ export default function DashboardPage() {
           </button>
 
           <button
-            onClick={() => router.push("/dashboard/bantuan")}
+            onClick={() => router.push("/app/dashboard/user/bantuan")}
             className="p-4 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg text-left transition-colors group"
           >
             <div className="flex items-center gap-3">
