@@ -9,7 +9,7 @@ const menuItems = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
   { label: "Buat Surat", icon: FilePlus2, path: "/dashboard/user/SuratPernyataan" },
   { label: "Progress", icon: Clock, path: "/dashboard/user/SuratPernyataan/progress" },
-  { label: "Bantuan", icon: HelpCircle, path: "/dashboard/bantuan" },
+  { label: "Bantuan", icon: HelpCircle, path: "/app/dashboard/user/bantuan" },
 ];
 
 export default function Sidebar({ collapsed }: { collapsed: boolean }) {
