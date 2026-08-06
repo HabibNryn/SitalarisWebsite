@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Ambil user + agregasi surat
+    // Ambil user + agregasi surat.
+    // Optimasi N+1: gunakan `_count` untuk total surat dan `take: 1`
+    // pada include agar hanya mengambil 1 surat terbaru per user,
+    // bukan seluruh surat (yang bisa ratusan baris per user).
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -52,8 +55,10 @@ export async function GET(request: NextRequest) {
           name: true,
           email: true,
           createdAt: true,
+          _count: { select: { suratPernyataan: true } },
           suratPernyataan: {
             orderBy: { createdAt: "desc" },
+            take: 1,
             select: {
               id: true,
               status: true,
@@ -72,7 +77,7 @@ export async function GET(request: NextRequest) {
         name: u.name,
         email: u.email,
         createdAt: u.createdAt.toISOString(),
-        totalLetters: u.suratPernyataan.length,
+        totalLetters: u._count?.suratPernyataan ?? 0,
         latestStatus: latest?.status ?? null,
         latestLetterAt: latest?.createdAt.toISOString() ?? null,
       };

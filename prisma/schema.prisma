@@ -22,17 +22,16 @@ model User {
   lastLogin           DateTime?
   phone               String?
   isAdmin             Boolean               @default(false)
-  isVerified          Boolean               @default(false) 
-  verificationToken   String?               
+  isVerified          Boolean               @default(false)
+  verificationToken   String?
   accounts            Account[]
   documentLogs        DocumentLog[]
   permohonanAhliWaris PermohonanAhliWaris[]
   profile             Profile?
   sessions            Session[]
   suratPernyataan     SuratPernyataan[]
-  notifications       Notification[]        
-  activityLogs        ActivityLog[]
-  UploadFiles          UploadFile[]         
+  notifications       Notification[]
+  UploadFiles          UploadFile[]
 
   @@index([email])
   @@index([role])
@@ -63,8 +62,8 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  ipAddress    String?  
-  userAgent    String? 
+  ipAddress    String?
+  userAgent    String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -95,7 +94,7 @@ model PermohonanAhliWaris {
   createdAt             DateTime         @default(now())
   statusPermohonan      StatusPermohonan @default(PENDING)
   agamaPewaris          String?
-  catatan          String?
+  catatan               String?
   instansiNikah         String?
   noSuratNikah          String?
   nomorAkteKematian     String?
@@ -106,7 +105,7 @@ model PermohonanAhliWaris {
   tanggalNikah          DateTime?
   tempatLahirPewaris    String?
   updatedAt             DateTime         @updatedAt
-  completedAt           DateTime?        
+  completedAt           DateTime?
   suratPernyataan       SuratPernyataan? @relation(fields: [suratPernyataanId], references: [id])
   user                  User?            @relation(fields: [userId], references: [id])
 
@@ -125,41 +124,41 @@ model Profile {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   agama        String?
-  nik          String?   @unique 
+  nik          String?   @unique
   pekerjaan    String?
-  tempatLahir  String?   
-  jenisKelamin String?   
+  tempatLahir  String?
+  jenisKelamin String?
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([nik])
 }
 
-// MODEL UTAMA SURAT PERNYATAAN - DIPERBARUI
+// MODEL UTAMA SURAT PERNYATAAN
 model SuratPernyataan {
   id                   String               @id @default(cuid())
   nomorSurat           String               @unique
   userId               String
-  
+
   // Data Pewaris
-  dataPewaris          Json                 // Menyimpan semua data pewaris sebagai JSON
-  
+  dataPewaris          Json
+
   // Data Ahli Waris
-  ahliWaris            Json                 // Array ahli waris sebagai JSON
-  
+  ahliWaris            Json
+
   // Data Tambahan (untuk kondisi 2 dan 3)
-  anakMeninggal        Json?                // Data anak yang meninggal (untuk kondisi 2 dan 3)
-  
+  anakMeninggal        Json?
+
   // Informasi Kondisi
-  kondisi              String               // kondisi1, kondisi2, ..., kondisi7
-  
+  kondisi              String
+
   // Informasi Tambahan
   tambahanKeterangan   String?
-  
+
   // Informasi Pernikahan Kedua (untuk kondisi 4)
   noSuratNikahKedua    String?
   tanggalNikahKedua    DateTime?
   instansiNikahKedua   String?
-  
+
   // Status dan Tracking
   status               StatusSurat          @default(DRAFT)
   isGenerated          Boolean              @default(false)
@@ -169,7 +168,7 @@ model SuratPernyataan {
   pdfUrl               String?
   pdfVersion           Int                  @default(0)
   sentAt               DateTime?            // Waktu pengiriman email notifikasi selesai
-  can_access_permohonan  Boolean              @default(false)
+  can_access_permohonan Boolean              @default(false)
   catatan              String?
 
   // Review
@@ -180,17 +179,17 @@ model SuratPernyataan {
   approvedAt           DateTime?
   verifiedAt           DateTime?
   submittedAt          DateTime?
-  
+
   // Download dan Print Tracking
   downloadCount        Int                  @default(0)
   printCount           Int                  @default(0)
   lastPrinted          DateTime?
   lastDownloaded       DateTime?
-  
+
   // Metadata
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-  
+
   // Relations
   documentLogs         DocumentLog[]
   permohonan           PermohonanAhliWaris?
@@ -202,6 +201,7 @@ model SuratPernyataan {
   @@index([status])
   @@index([createdAt])
   @@index([kondisi])
+  @@index([userId, createdAt])
 }
 
 model DocumentLog {
@@ -234,91 +234,28 @@ model UploadFile {
   user        User?    @relation(fields: [uploadedBy], references: [id])
   uploadedAt  DateTime @default(now())
   metadata    Json?
-  
+
   @@index([filename])
   @@index([fileType])
   @@index([uploadedAt])
 }
 
 model Notification {
-  id          String        @id @default(cuid())
+  id          String           @id @default(cuid())
   userId      String
   title       String
   message     String
   type        NotificationType @default(INFO)
-  isRead      Boolean       @default(false)
+  isRead      Boolean          @default(false)
   readAt      DateTime?
-  link        String?       
+  link        String?
   metadata    Json?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
-  @@index([createdAt])
-}
-
-model ActivityLog {
-  id          String        @id @default(cuid())
-  userId      String
-  action      String
-  details     String?
-  ipAddress   String?
-  userAgent   String?
-  metadata    Json?
-  createdAt   DateTime      @default(now())
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-}
-
-model Template {
-  id          String        @id @default(cuid())
-  name        String        @unique
-  type        TemplateType
-  subject     String?
-  content     String
-  variables   Json?         
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  createdBy   String?
-  updatedBy   String?
-
-  @@index([type])
-  @@index([isActive])
-}
-
-model SystemConfig {
-  id          String        @id @default(cuid())
-  key         String        @unique
-  value       String
-  type        ConfigType    @default(STRING)
-  category    String?       
-  description String?
-  isPublic    Boolean       @default(false)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  @@index([key])
-  @@index([category])
-}
-
-model BackupLog {
-  id          String        @id @default(cuid())
-  type        BackupType
-  filename    String
-  fileSize    Int?
-  status      BackupStatus  @default(COMPLETED)
-  details     String?
-  createdAt   DateTime      @default(now())
-  createdBy   String?
-  
-  @@index([type])
-  @@index([status])
   @@index([createdAt])
 }
 
@@ -327,7 +264,7 @@ enum UserRole {
   user
   admin
   super_admin
-  reviewer  
+  reviewer
 }
 
 enum StatusPermohonan {
@@ -336,7 +273,7 @@ enum StatusPermohonan {
   APPROVED
   REJECTED
   COMPLETED
-  CANCELLED  
+  CANCELLED
 }
 
 enum StatusSurat {
@@ -346,7 +283,7 @@ enum StatusSurat {
   APPROVED
   REJECTED
   ARCHIVED
-  EXPIRED 
+  EXPIRED
   COMPLETED
   SENT
 }
@@ -360,8 +297,8 @@ enum DocumentAction {
   GENERATE_PDF
   DELETE
   STATUS_CHANGE
-  ARCHIVE    
-  RESTORE    
+  ARCHIVE
+  RESTORE
 }
 
 enum NotificationType {
@@ -370,35 +307,4 @@ enum NotificationType {
   WARNING
   ERROR
   SYSTEM
-}
-
-enum TemplateType {
-  EMAIL_APPROVAL
-  EMAIL_REJECTION
-  EMAIL_VERIFICATION
-  SURAT_TEMPLATE
-  PDF_TEMPLATE
-  SMS_NOTIFICATION
-}
-
-enum ConfigType {
-  STRING
-  NUMBER
-  BOOLEAN
-  JSON
-  ARRAY
-}
-
-enum BackupType {
-  DATABASE
-  FILES
-  LOGS
-  FULL
-}
-
-enum BackupStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
 }

@@ -75,12 +75,6 @@ export default function AdminLayout({
       href: "/dashboard/admin/users",
       isActive: UsePathname.startsWith("/dashboard/admin/users"),
     },
-    {
-      title: "Pengaturan",
-      icon: <Settings className="w-5 h-5" />,
-      href: "/dashboard/admin/settings",
-      isActive: UsePathname.startsWith("/dashboard/admin/settings"),
-    },
   ];
 
   return (
