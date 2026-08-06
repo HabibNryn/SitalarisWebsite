@@ -82,15 +82,6 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-xs text-gray-500 whitespace-nowrap">{activity.time}</span>
                 </div>
-                {activity.status === "pending" && (
-                  <Button
-                    size="sm"
-                    className="mt-2 bg-blue-600 hover:bg-blue-700"
-                    onClick={() => router.push("/dashboard/data-diri")}
-                  >
-                    Lengkapi Sekarang
-                  </Button>
-                )}
               </div>
             </div>
           ))}
