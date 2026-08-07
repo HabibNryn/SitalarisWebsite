@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 days 
   },
 
   pages: {
@@ -46,19 +46,25 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email dan password harus diisi");
+        };
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase() },
         });
 
-        if (!user || !user.password || !user.isActive || !user.email) return null;
+        if (!user || !user.password || !user.isActive || !user.email) {
+          throw new Error("Email tidak terdaftar dalam sistem.");
+        };
 
         const valid = await bcrypt.compare(
           credentials.password,
           user.password,
         );
-        if (!valid) return null;
+        if (!valid) {
+          throw new Error("Email atau password yang anda masukkan salah.");
+        };
 
         await prisma.user.update({
           where: { id: user.id },

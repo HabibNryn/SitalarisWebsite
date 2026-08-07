@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -29,16 +29,22 @@ export default function LoginForm() {
     setError("");
 
     const res = await signIn("credentials", {
-      redirect: false,
+      redirect: false, // Wajib false agar kita bisa tangani error manual
       email,
       password,
     });
 
-    if (!res?.error) {
-      router.push("/login");
+    // LOGIKA HANDLER ERROR YANG BENAR
+    if (res?.error) {
+      // Pesan error dari backend akan tertampung di res.error
+      setError(res.error); 
+      setLoading(false);
+      return; // Hentikan proses, jangan redirect!
     }
 
-    // Redirect ke dashboard setelah login berhasil
+    // Jika sukses (tidak ada error), arahkan ke dashboard
+    // Catatan: Karena di halaman `login/page.tsx` Anda sudah ada logika redirect otomatis memakai useSession,
+    // sebenarnya baris ini bisa dihapus, tapi untuk amannya kita biarkan.
     router.push("/dashboard");
   };
 
@@ -46,13 +52,9 @@ export default function LoginForm() {
     setGoogleLoading(true);
     setError("");
 
+    // Hapus pemanggilan signIn ganda. Cukup satu kali dengan callbackUrl yang tepat.
     await signIn("google", {
-      redirect: false,
-      callbackUrl: "/login",
-    });
-
-    await signIn("google", {
-      callbackUrl: "/login", // cukup ini
+      callbackUrl: "/dashboard", // Redirect ke dashboard setelah berhasil login via Google
     });
   };
 
@@ -102,7 +104,7 @@ export default function LoginForm() {
               </p>
             </div>
 
-            {/* Error Message */}
+            {/* Error Message - Sekarang berfungsi menampilkan error backend */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center">
                 <ShieldCheck className="w-4 h-4 mr-2" />
@@ -218,60 +220,44 @@ export default function LoginForm() {
         </div>
       </div>
 
-      {/* Right Side - Hero Section */}
+      {/* Right Side - Hero Section (Tidak berubah) */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
         <div className="flex-1 flex items-center justify-center p-12">
           <div className="max-w-md text-white">
-            {/* Government Icon */}
             <div className="mb-8">
               <div className="w-20 h-20 bg-white/20 rounded-3xl backdrop-blur-sm border border-white/30 flex items-center justify-center mb-6">
                 <Users className="w-10 h-10 text-white" />
               </div>
             </div>
-
             <h2 className="text-4xl font-bold mb-6 leading-tight">
               Layanan Pembuatan
               <span className="block text-blue-200">
                 Surat Keterangan Ahli Waris
               </span>
             </h2>
-
             <p className="text-blue-100 text-lg mb-8 leading-relaxed">
               Mulai Buat Surat Keterangan Ahli Waris dengan mudah dan cepat
               melalui sistem kami. Dapatkan layanan terpercaya untuk kebutuhan
               administrasi desa Anda.
             </p>
-
-            {/* Features List */}
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">
-                  Masuk Dengan Alamat Email dan Password
-                </span>
+                <span className="text-blue-100">Masuk Dengan Alamat Email dan Password</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">
-                  Atau Langsung Masuk Dengan Akun Google Anda
-                </span>
+                <span className="text-blue-100">Atau Langsung Masuk Dengan Akun Google Anda</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">
-                  Jika Belum Mempunyai Akun, Daftar dengan menekan `Daftar
-                  Disini`
-                </span>
+                <span className="text-blue-100">Jika Belum Mempunyai Akun, Daftar dengan menekan `Daftar Disini`</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">
-                  Lalu Anda Akan Diarahkan Ke Halaman Dashboard
-                </span>
+                <span className="text-blue-100">Lalu Anda Akan Diarahkan Ke Halaman Dashboard</span>
               </div>
             </div>
-
-            {/* Stats */}
             <div className="mt-12 grid grid-cols-3 gap-6 text-center">
               <div>
                 <div className="text-2xl font-bold">Resmi</div>
