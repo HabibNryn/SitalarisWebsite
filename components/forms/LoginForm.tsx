@@ -1,9 +1,9 @@
-// components/forms/LoginForm.tsx
 "use client";
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Loader2,
   Mail,
@@ -12,55 +12,129 @@ import {
   Building2,
   Users,
   FileCheck,
+  User,
+  Eye,
+  EyeOff,
+  CheckCircle,
 } from "lucide-react";
-import Image from "next/image";
 
-export default function LoginForm() {
+export default function AuthForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState("");
 
+  // Mode: 'login' atau 'register'
+  const [mode, setMode] = useState<"login" | "register">("login");
+
+  // State form login
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  // State form register
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [regLoading, setRegLoading] = useState(false);
+  const [regSuccess, setRegSuccess] = useState(false);
+  const [regError, setRegError] = useState("");
+
+  // Show/hide password
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirm, setShowRegConfirm] = useState(false);
+
+  // ======== LOGIN HANDLER ========
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+    setLoginLoading(true);
+    setLoginError("");
 
     const res = await signIn("credentials", {
-      redirect: false, // Wajib false agar kita bisa tangani error manual
-      email,
-      password,
+      redirect: false,
+      email: loginEmail,
+      password: loginPassword,
     });
 
-    // LOGIKA HANDLER ERROR YANG BENAR
     if (res?.error) {
-      // Pesan error dari backend akan tertampung di res.error
-      setError(res.error); 
-      setLoading(false);
-      return; // Hentikan proses, jangan redirect!
+      setLoginError(res.error);
+      setLoginLoading(false);
+      return;
     }
 
-    // Jika sukses (tidak ada error), arahkan ke dashboard
-    // Catatan: Karena di halaman `login/page.tsx` Anda sudah ada logika redirect otomatis memakai useSession,
-    // sebenarnya baris ini bisa dihapus, tapi untuk amannya kita biarkan.
+    // Sukses
     router.push("/dashboard");
   };
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    setError("");
+  // ======== REGISTER HANDLER ========
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegLoading(true);
+    setRegError("");
+    setRegSuccess(false);
 
-    // Hapus pemanggilan signIn ganda. Cukup satu kali dengan callbackUrl yang tepat.
-    await signIn("google", {
-      callbackUrl: "/dashboard", // Redirect ke dashboard setelah berhasil login via Google
-    });
+    // Validasi sederhana (client-side)
+    if (regPassword !== regConfirmPassword) {
+      setRegError("Password dan konfirmasi tidak sama");
+      setRegLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: regName,
+          email: regEmail,
+          password: regPassword,
+          confirmPassword: regConfirmPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Registrasi gagal");
+      }
+
+      // Sukses
+      setRegSuccess(true);
+      setRegName("");
+      setRegEmail("");
+      setRegPassword("");
+      setRegConfirmPassword("");
+      // Setelah sukses, alihkan ke mode login setelah 2 detik
+      setTimeout(() => {
+        setMode("login");
+        setRegSuccess(false);
+        // Isi email yang baru didaftarkan
+        setLoginEmail(regEmail);
+      }, 2000);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setRegError(err.message);
+      } else {
+        setRegError("Terjadi kesalahan tidak diketahui");
+      }
+    } finally {
+      setRegLoading(false);
+    }
   };
 
+  // ======== TOGGLE MODE ========
+  const toggleMode = () => {
+    setMode(mode === "login" ? "register" : "login");
+    // Reset error & success state saat toggle
+    setLoginError("");
+    setRegError("");
+    setRegSuccess(false);
+  };
+
+  // ======== RENDER ========
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Left Side - Login Form */}
+      {/* Left Side - Auth Form */}
       <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:max-w-md">
           {/* Header */}
@@ -93,119 +167,239 @@ export default function LoginForm() {
             </div>
           </div>
 
-          {/* Login Card */}
+          {/* Card */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-900 text-center">
-                Masuk ke Akun Anda
+                {mode === "login" ? "Masuk ke Akun Anda" : "Daftar Akun Baru"}
               </h2>
               <p className="text-gray-500 text-center mt-1 text-sm">
-                Akses layanan administrasi desa dengan mudah
+                {mode === "login"
+                  ? "Akses layanan administrasi desa dengan mudah"
+                  : "Buat akun untuk mulai menggunakan layanan"}
               </p>
             </div>
 
-            {/* Error Message - Sekarang berfungsi menampilkan error backend */}
-            {error && (
+            {/* Error / Success Messages */}
+            {mode === "login" && loginError && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center">
                 <ShieldCheck className="w-4 h-4 mr-2" />
-                {error}
+                {loginError}
+              </div>
+            )}
+            {mode === "register" && regError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center">
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                {regError}
+              </div>
+            )}
+            {mode === "register" && regSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 text-sm flex items-center">
+                <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                Registrasi berhasil! Mengalihkan ke login...
               </div>
             )}
 
-            {/* Login Form */}
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Email Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Alamat Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="email"
-                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white text-gray-900 placeholder-gray-400"
-                    placeholder="email@desa.domain"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+            {/* ===== FORM LOGIN ===== */}
+            {mode === "login" && (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Alamat Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <input
+                      type="email"
+                      className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white text-gray-900 placeholder-gray-400"
+                      placeholder="email@desa.domain"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Password Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Kata Sandi
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="password"
-                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white text-gray-900 placeholder-gray-400"
-                    placeholder="Masukkan kata sandi"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kata Sandi
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <input
+                      type={showLoginPassword ? "text" : "password"}
+                      className="w-full pl-11 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white text-gray-900 placeholder-gray-400"
+                      placeholder="Masukkan kata sandi"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3.5 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                    Memproses...
-                  </>
-                ) : (
-                  "Masuk"
-                )}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3.5 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+                >
+                  {loginLoading ? (
+                    <>
+                      <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                      Memproses...
+                    </>
+                  ) : (
+                    "Masuk"
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* ===== FORM REGISTER ===== */}
+            {mode === "register" && (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Lengkap
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-white text-gray-900"
+                      placeholder="Masukkan nama lengkap"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-white text-gray-900"
+                      placeholder="email@desa.domain"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Kata Sandi
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showRegPassword ? "text" : "password"}
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-white text-gray-900"
+                      placeholder="Minimal 6 karakter, huruf & angka"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Konfirmasi Kata Sandi
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showRegConfirm ? "text" : "password"}
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition bg-white text-gray-900"
+                      placeholder="Masukkan ulang password"
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegConfirm(!showRegConfirm)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showRegConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={regLoading || regSuccess}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3.5 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+                >
+                  {regLoading ? (
+                    <>
+                      <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                      Memproses...
+                    </>
+                  ) : regSuccess ? (
+                    "Berhasil ✅"
+                  ) : (
+                    "Daftar Sekarang"
+                  )}
+                </button>
+              </form>
+            )}
 
             {/* Divider */}
             <div className="flex items-center my-6">
               <div className="flex-1 border-t border-gray-200"></div>
-              <p className="px-4 text-gray-400 text-sm">atau lanjut dengan</p>
+              <p className="px-4 text-gray-400 text-sm">atau</p>
               <div className="flex-1 border-t border-gray-200"></div>
             </div>
 
-            {/* Google Login Button */}
+            {/* Google Login (tetap ada di kedua mode) */}
             <button
-              onClick={handleGoogleLogin}
-              disabled={googleLoading}
-              className="w-full border border-gray-300 hover:border-gray-400 bg-white text-gray-700 hover:text-gray-900 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center cursor-pointer shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              className="w-full border border-gray-300 hover:border-gray-400 bg-white text-gray-700 hover:text-gray-900 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center shadow-sm hover:shadow-md"
             >
-              {googleLoading ? (
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-              ) : (
-                <Image
-                  src="/google.png"
-                  alt="Google"
-                  width={20}
-                  height={20}
-                  className="w-5 h-5"
-                />
-              )}
+              <Image
+                src="/google.png"
+                alt="Google"
+                width={20}
+                height={20}
+                className="w-5 h-5"
+              />
               <span className="ml-3">
-                {googleLoading ? "Memproses..." : "Masuk dengan Google"}
+                Masuk dengan Google
               </span>
             </button>
 
-            {/* Footer Links */}
+            {/* Toggle Link */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
-                Belum Punya Akun?{" "}
-                <a
-                  href="/register"
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                {mode === "login" ? "Belum punya akun?" : "Sudah punya akun?"}
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="ml-2 text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  Daftar Disini
-                </a>
+                  {mode === "login" ? "Daftar di sini" : "Masuk di sini"}
+                </button>
               </p>
             </div>
           </div>
@@ -220,7 +414,7 @@ export default function LoginForm() {
         </div>
       </div>
 
-      {/* Right Side - Hero Section (Tidak berubah) */}
+      {/* Right Side - Hero (tetap) */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
         <div className="flex-1 flex items-center justify-center p-12">
           <div className="max-w-md text-white">
@@ -243,19 +437,23 @@ export default function LoginForm() {
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Masuk Dengan Alamat Email dan Password</span>
+                <span className="text-blue-100">
+                  {mode === "login"
+                    ? "Masuk dengan email dan password"
+                    : "Daftar dengan email dan password"}
+                </span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Atau Langsung Masuk Dengan Akun Google Anda</span>
+                <span className="text-blue-100">Atau langsung dengan Google</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Jika Belum Mempunyai Akun, Daftar dengan menekan `Daftar Disini`</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-blue-100">Lalu Anda Akan Diarahkan Ke Halaman Dashboard</span>
+                <span className="text-blue-100">
+                  {mode === "login"
+                    ? "Belum punya akun? Daftar sekarang!"
+                    : "Sudah punya akun? Login!"}
+                </span>
               </div>
             </div>
             <div className="mt-12 grid grid-cols-3 gap-6 text-center">
