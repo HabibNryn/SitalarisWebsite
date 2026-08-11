@@ -109,17 +109,33 @@ export default function KontakPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulasi pengiriman form
-    setTimeout(() => {
-      console.log("Form submitted:", formData);
+    try {
+      const response = await fetch("/api/kontak", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Terjadi kesalahan saat mengirim pesan.");
+      }
+
       setIsSubmitting(false);
       setIsSubmitted(true);
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
 
       // Reset success message setelah 5 detik
       setTimeout(() => setIsSubmitted(false), 5000);
-    }, 1500);
+    } catch (error: unknown) {
+      console.error("Error:", error);
+      setIsSubmitting(false);
+      alert("error" + (error as Error).message);
+    }
   };
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,

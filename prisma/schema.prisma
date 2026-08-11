@@ -138,28 +138,14 @@ model SuratPernyataan {
   id                   String               @id @default(cuid())
   nomorSurat           String               @unique
   userId               String
-
-  // Data Pewaris
   dataPewaris          Json
-
-  // Data Ahli Waris
   ahliWaris            Json
-
-  // Data Tambahan (untuk kondisi 2 dan 3)
   anakMeninggal        Json?
-
-  // Informasi Kondisi
   kondisi              String
-
-  // Informasi Tambahan
   tambahanKeterangan   String?
-
-  // Informasi Pernikahan Kedua (untuk kondisi 4)
   noSuratNikahKedua    String?
   tanggalNikahKedua    DateTime?
   instansiNikahKedua   String?
-
-  // Status dan Tracking
   status               StatusSurat          @default(DRAFT)
   isGenerated          Boolean              @default(false)
   generatedAt          DateTime?
@@ -167,11 +153,9 @@ model SuratPernyataan {
   pdfFileSize          Int?
   pdfUrl               String?
   pdfVersion           Int                  @default(0)
-  sentAt               DateTime?            // Waktu pengiriman email notifikasi selesai
+  sentAt               DateTime?            
   can_access_permohonan Boolean              @default(false)
   catatan              String?
-
-  // Review
   reviewNotes          String?
   reviewedBy           String?
   reviewedAt           DateTime?
@@ -179,18 +163,12 @@ model SuratPernyataan {
   approvedAt           DateTime?
   verifiedAt           DateTime?
   submittedAt          DateTime?
-
-  // Download dan Print Tracking
   downloadCount        Int                  @default(0)
   printCount           Int                  @default(0)
   lastPrinted          DateTime?
   lastDownloaded       DateTime?
-
-  // Metadata
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-
-  // Relations
   documentLogs         DocumentLog[]
   permohonan           PermohonanAhliWaris?
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
